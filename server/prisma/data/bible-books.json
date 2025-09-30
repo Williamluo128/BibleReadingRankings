@@ -1,0 +1,596 @@
+[
+  {
+    "id": 1,
+    "nameCn": "创世记",
+    "nameCnShort": "创",
+    "nameEn": "Genesis",
+    "abbreviation": "Gen",
+    "testament": "OT",
+    "bookOrder": 1
+  },
+  {
+    "id": 2,
+    "nameCn": "出埃及记",
+    "nameCnShort": "出",
+    "nameEn": "Exodus",
+    "abbreviation": "Exo",
+    "testament": "OT",
+    "bookOrder": 2
+  },
+  {
+    "id": 3,
+    "nameCn": "利未记",
+    "nameCnShort": "利",
+    "nameEn": "Leviticus",
+    "abbreviation": "Lev",
+    "testament": "OT",
+    "bookOrder": 3
+  },
+  {
+    "id": 4,
+    "nameCn": "民数记",
+    "nameCnShort": "民",
+    "nameEn": "Numbers",
+    "abbreviation": "Num",
+    "testament": "OT",
+    "bookOrder": 4
+  },
+  {
+    "id": 5,
+    "nameCn": "申命记",
+    "nameCnShort": "申",
+    "nameEn": "Deuteronomy",
+    "abbreviation": "Deu",
+    "testament": "OT",
+    "bookOrder": 5
+  },
+  {
+    "id": 6,
+    "nameCn": "约书亚记",
+    "nameCnShort": "书",
+    "nameEn": "Joshua",
+    "abbreviation": "Jos",
+    "testament": "OT",
+    "bookOrder": 6
+  },
+  {
+    "id": 7,
+    "nameCn": "士师记",
+    "nameCnShort": "士",
+    "nameEn": "Judges",
+    "abbreviation": "Jdg",
+    "testament": "OT",
+    "bookOrder": 7
+  },
+  {
+    "id": 8,
+    "nameCn": "路得记",
+    "nameCnShort": "得",
+    "nameEn": "Ruth",
+    "abbreviation": "Rut",
+    "testament": "OT",
+    "bookOrder": 8
+  },
+  {
+    "id": 9,
+    "nameCn": "撒母耳记上",
+    "nameCnShort": "撒上",
+    "nameEn": "1 Samuel",
+    "abbreviation": "1Sa",
+    "testament": "OT",
+    "bookOrder": 9
+  },
+  {
+    "id": 10,
+    "nameCn": "撒母耳记下",
+    "nameCnShort": "撒下",
+    "nameEn": "2 Samuel",
+    "abbreviation": "2Sa",
+    "testament": "OT",
+    "bookOrder": 10
+  },
+  {
+    "id": 11,
+    "nameCn": "列王纪上",
+    "nameCnShort": "王上",
+    "nameEn": "1 Kings",
+    "abbreviation": "1Ki",
+    "testament": "OT",
+    "bookOrder": 11
+  },
+  {
+    "id": 12,
+    "nameCn": "列王纪下",
+    "nameCnShort": "王下",
+    "nameEn": "2 Kings",
+    "abbreviation": "2Ki",
+    "testament": "OT",
+    "bookOrder": 12
+  },
+  {
+    "id": 13,
+    "nameCn": "历代志上",
+    "nameCnShort": "代上",
+    "nameEn": "1 Chronicles",
+    "abbreviation": "1Ch",
+    "testament": "OT",
+    "bookOrder": 13
+  },
+  {
+    "id": 14,
+    "nameCn": "历代志下",
+    "nameCnShort": "代下",
+    "nameEn": "2 Chronicles",
+    "abbreviation": "2Ch",
+    "testament": "OT",
+    "bookOrder": 14
+  },
+  {
+    "id": 15,
+    "nameCn": "以斯拉记",
+    "nameCnShort": "拉",
+    "nameEn": "Ezra",
+    "abbreviation": "Ezr",
+    "testament": "OT",
+    "bookOrder": 15
+  },
+  {
+    "id": 16,
+    "nameCn": "尼希米记",
+    "nameCnShort": "尼",
+    "nameEn": "Nehemiah",
+    "abbreviation": "Neh",
+    "testament": "OT",
+    "bookOrder": 16
+  },
+  {
+    "id": 17,
+    "nameCn": "以斯帖记",
+    "nameCnShort": "斯",
+    "nameEn": "Esther",
+    "abbreviation": "Est",
+    "testament": "OT",
+    "bookOrder": 17
+  },
+  {
+    "id": 18,
+    "nameCn": "约伯记",
+    "nameCnShort": "伯",
+    "nameEn": "Job",
+    "abbreviation": "Job",
+    "testament": "OT",
+    "bookOrder": 18
+  },
+  {
+    "id": 19,
+    "nameCn": "诗篇",
+    "nameCnShort": "诗",
+    "nameEn": "Psalms",
+    "abbreviation": "Psa",
+    "testament": "OT",
+    "bookOrder": 19
+  },
+  {
+    "id": 20,
+    "nameCn": "箴言",
+    "nameCnShort": "箴",
+    "nameEn": "Proverbs",
+    "abbreviation": "Pro",
+    "testament": "OT",
+    "bookOrder": 20
+  },
+  {
+    "id": 21,
+    "nameCn": "传道书",
+    "nameCnShort": "传",
+    "nameEn": "Ecclesiastes",
+    "abbreviation": "Ecc",
+    "testament": "OT",
+    "bookOrder": 21
+  },
+  {
+    "id": 22,
+    "nameCn": "雅歌",
+    "nameCnShort": "歌",
+    "nameEn": "Song of Solomon",
+    "abbreviation": "Sng",
+    "testament": "OT",
+    "bookOrder": 22
+  },
+  {
+    "id": 23,
+    "nameCn": "以赛亚书",
+    "nameCnShort": "赛",
+    "nameEn": "Isaiah",
+    "abbreviation": "Isa",
+    "testament": "OT",
+    "bookOrder": 23
+  },
+  {
+    "id": 24,
+    "nameCn": "耶利米书",
+    "nameCnShort": "耶",
+    "nameEn": "Jeremiah",
+    "abbreviation": "Jer",
+    "testament": "OT",
+    "bookOrder": 24
+  },
+  {
+    "id": 25,
+    "nameCn": "耶利米哀歌",
+    "nameCnShort": "哀",
+    "nameEn": "Lamentations",
+    "abbreviation": "Lam",
+    "testament": "OT",
+    "bookOrder": 25
+  },
+  {
+    "id": 26,
+    "nameCn": "以西结书",
+    "nameCnShort": "结",
+    "nameEn": "Ezekiel",
+    "abbreviation": "Eze",
+    "testament": "OT",
+    "bookOrder": 26
+  },
+  {
+    "id": 27,
+    "nameCn": "但以理书",
+    "nameCnShort": "但",
+    "nameEn": "Daniel",
+    "abbreviation": "Dan",
+    "testament": "OT",
+    "bookOrder": 27
+  },
+  {
+    "id": 28,
+    "nameCn": "何西阿书",
+    "nameCnShort": "何",
+    "nameEn": "Hosea",
+    "abbreviation": "Hos",
+    "testament": "OT",
+    "bookOrder": 28
+  },
+  {
+    "id": 29,
+    "nameCn": "约珥书",
+    "nameCnShort": "珥",
+    "nameEn": "Joel",
+    "abbreviation": "Joe",
+    "testament": "OT",
+    "bookOrder": 29
+  },
+  {
+    "id": 30,
+    "nameCn": "阿摩司书",
+    "nameCnShort": "摩",
+    "nameEn": "Amos",
+    "abbreviation": "Amo",
+    "testament": "OT",
+    "bookOrder": 30
+  },
+  {
+    "id": 31,
+    "nameCn": "俄巴底亚书",
+    "nameCnShort": "俄",
+    "nameEn": "Obadiah",
+    "abbreviation": "Oba",
+    "testament": "OT",
+    "bookOrder": 31
+  },
+  {
+    "id": 32,
+    "nameCn": "约拿书",
+    "nameCnShort": "拿",
+    "nameEn": "Jonah",
+    "abbreviation": "Jon",
+    "testament": "OT",
+    "bookOrder": 32
+  },
+  {
+    "id": 33,
+    "nameCn": "弥迦书",
+    "nameCnShort": "弥",
+    "nameEn": "Micah",
+    "abbreviation": "Mic",
+    "testament": "OT",
+    "bookOrder": 33
+  },
+  {
+    "id": 34,
+    "nameCn": "那鸿书",
+    "nameCnShort": "鸿",
+    "nameEn": "Nahum",
+    "abbreviation": "Nah",
+    "testament": "OT",
+    "bookOrder": 34
+  },
+  {
+    "id": 35,
+    "nameCn": "哈巴谷书",
+    "nameCnShort": "哈",
+    "nameEn": "Habakkuk",
+    "abbreviation": "Hab",
+    "testament": "OT",
+    "bookOrder": 35
+  },
+  {
+    "id": 36,
+    "nameCn": "西番雅书",
+    "nameCnShort": "番",
+    "nameEn": "Zephaniah",
+    "abbreviation": "Zep",
+    "testament": "OT",
+    "bookOrder": 36
+  },
+  {
+    "id": 37,
+    "nameCn": "哈该书",
+    "nameCnShort": "该",
+    "nameEn": "Haggai",
+    "abbreviation": "Hag",
+    "testament": "OT",
+    "bookOrder": 37
+  },
+  {
+    "id": 38,
+    "nameCn": "撒迦利亚书",
+    "nameCnShort": "亚",
+    "nameEn": "Zechariah",
+    "abbreviation": "Zec",
+    "testament": "OT",
+    "bookOrder": 38
+  },
+  {
+    "id": 39,
+    "nameCn": "玛拉基书",
+    "nameCnShort": "玛",
+    "nameEn": "Malachi",
+    "abbreviation": "Mal",
+    "testament": "OT",
+    "bookOrder": 39
+  },
+  {
+    "id": 40,
+    "nameCn": "马太福音",
+    "nameCnShort": "太",
+    "nameEn": "Matthew",
+    "abbreviation": "Mat",
+    "testament": "NT",
+    "bookOrder": 40
+  },
+  {
+    "id": 41,
+    "nameCn": "马可福音",
+    "nameCnShort": "可",
+    "nameEn": "Mark",
+    "abbreviation": "Mar",
+    "testament": "NT",
+    "bookOrder": 41
+  },
+  {
+    "id": 42,
+    "nameCn": "路加福音",
+    "nameCnShort": "路",
+    "nameEn": "Luke",
+    "abbreviation": "Luk",
+    "testament": "NT",
+    "bookOrder": 42
+  },
+  {
+    "id": 43,
+    "nameCn": "约翰福音",
+    "nameCnShort": "约",
+    "nameEn": "John",
+    "abbreviation": "Joh",
+    "testament": "NT",
+    "bookOrder": 43
+  },
+  {
+    "id": 44,
+    "nameCn": "使徒行传",
+    "nameCnShort": "徒",
+    "nameEn": "Acts",
+    "abbreviation": "Act",
+    "testament": "NT",
+    "bookOrder": 44
+  },
+  {
+    "id": 45,
+    "nameCn": "罗马书",
+    "nameCnShort": "罗",
+    "nameEn": "Romans",
+    "abbreviation": "Rom",
+    "testament": "NT",
+    "bookOrder": 45
+  },
+  {
+    "id": 46,
+    "nameCn": "哥林多前书",
+    "nameCnShort": "林前",
+    "nameEn": "1 Corinthians",
+    "abbreviation": "1Co",
+    "testament": "NT",
+    "bookOrder": 46
+  },
+  {
+    "id": 47,
+    "nameCn": "哥林多后书",
+    "nameCnShort": "林后",
+    "nameEn": "2 Corinthians",
+    "abbreviation": "2Co",
+    "testament": "NT",
+    "bookOrder": 47
+  },
+  {
+    "id": 48,
+    "nameCn": "加拉太书",
+    "nameCnShort": "加",
+    "nameEn": "Galatians",
+    "abbreviation": "Gal",
+    "testament": "NT",
+    "bookOrder": 48
+  },
+  {
+    "id": 49,
+    "nameCn": "以弗所书",
+    "nameCnShort": "弗",
+    "nameEn": "Ephesians",
+    "abbreviation": "Eph",
+    "testament": "NT",
+    "bookOrder": 49
+  },
+  {
+    "id": 50,
+    "nameCn": "腓立比书",
+    "nameCnShort": "腓",
+    "nameEn": "Philippians",
+    "abbreviation": "Phi",
+    "testament": "NT",
+    "bookOrder": 50
+  },
+  {
+    "id": 51,
+    "nameCn": "歌罗西书",
+    "nameCnShort": "西",
+    "nameEn": "Colossians",
+    "abbreviation": "Col",
+    "testament": "NT",
+    "bookOrder": 51
+  },
+  {
+    "id": 52,
+    "nameCn": "帖撒罗尼迦前书",
+    "nameCnShort": "帖前",
+    "nameEn": "1 Thessalonians",
+    "abbreviation": "1Th",
+    "testament": "NT",
+    "bookOrder": 52
+  },
+  {
+    "id": 53,
+    "nameCn": "帖撒罗尼迦后书",
+    "nameCnShort": "帖后",
+    "nameEn": "2 Thessalonians",
+    "abbreviation": "2Th",
+    "testament": "NT",
+    "bookOrder": 53
+  },
+  {
+    "id": 54,
+    "nameCn": "提摩太前书",
+    "nameCnShort": "提前",
+    "nameEn": "1 Timothy",
+    "abbreviation": "1Ti",
+    "testament": "NT",
+    "bookOrder": 54
+  },
+  {
+    "id": 55,
+    "nameCn": "提摩太后书",
+    "nameCnShort": "提后",
+    "nameEn": "2 Timothy",
+    "abbreviation": "2Ti",
+    "testament": "NT",
+    "bookOrder": 55
+  },
+  {
+    "id": 56,
+    "nameCn": "提多书",
+    "nameCnShort": "多",
+    "nameEn": "Titus",
+    "abbreviation": "Tit",
+    "testament": "NT",
+    "bookOrder": 56
+  },
+  {
+    "id": 57,
+    "nameCn": "腓利门书",
+    "nameCnShort": "门",
+    "nameEn": "Philemon",
+    "abbreviation": "Phm",
+    "testament": "NT",
+    "bookOrder": 57
+  },
+  {
+    "id": 58,
+    "nameCn": "希伯来书",
+    "nameCnShort": "来",
+    "nameEn": "Hebrews",
+    "abbreviation": "Heb",
+    "testament": "NT",
+    "bookOrder": 58
+  },
+  {
+    "id": 59,
+    "nameCn": "雅各书",
+    "nameCnShort": "雅",
+    "nameEn": "James",
+    "abbreviation": "Jam",
+    "testament": "NT",
+    "bookOrder": 59
+  },
+  {
+    "id": 60,
+    "nameCn": "彼得前书",
+    "nameCnShort": "彼前",
+    "nameEn": "1 Peter",
+    "abbreviation": "1Pe",
+    "testament": "NT",
+    "bookOrder": 60
+  },
+  {
+    "id": 61,
+    "nameCn": "彼得后书",
+    "nameCnShort": "彼后",
+    "nameEn": "2 Peter",
+    "abbreviation": "2Pe",
+    "testament": "NT",
+    "bookOrder": 61
+  },
+  {
+    "id": 62,
+    "nameCn": "约翰一书",
+    "nameCnShort": "约一",
+    "nameEn": "1 John",
+    "abbreviation": "1Jo",
+    "testament": "NT",
+    "bookOrder": 62
+  },
+  {
+    "id": 63,
+    "nameCn": "约翰二书",
+    "nameCnShort": "约二",
+    "nameEn": "2 John",
+    "abbreviation": "2Jo",
+    "testament": "NT",
+    "bookOrder": 63
+  },
+  {
+    "id": 64,
+    "nameCn": "约翰三书",
+    "nameCnShort": "约三",
+    "nameEn": "3 John",
+    "abbreviation": "3Jo",
+    "testament": "NT",
+    "bookOrder": 64
+  },
+  {
+    "id": 65,
+    "nameCn": "犹大书",
+    "nameCnShort": "犹",
+    "nameEn": "Jude",
+    "abbreviation": "Jud",
+    "testament": "NT",
+    "bookOrder": 65
+  },
+  {
+    "id": 66,
+    "nameCn": "启示录",
+    "nameCnShort": "启",
+    "nameEn": "Revelation",
+    "abbreviation": "Rev",
+    "testament": "NT",
+    "bookOrder": 66
+  }
+]

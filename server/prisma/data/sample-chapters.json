@@ -1,0 +1,147 @@
+[
+  {
+    "bookId": 1,
+    "chapterNumber": 1,
+    "verseCount": 31,
+    "verses": [
+      {
+        "verseNumber": 1,
+        "textCn": "起初，神创造天地。",
+        "textEn": "In the beginning God created the heavens and the earth."
+      },
+      {
+        "verseNumber": 2,
+        "textCn": "地是空虚混沌，渊面黑暗；神的灵运行在水面上。",
+        "textEn": "Now the earth was formless and empty, darkness was over the surface of the deep, and the Spirit of God was hovering over the waters."
+      },
+      {
+        "verseNumber": 3,
+        "textCn": "神说：'要有光'，就有了光。",
+        "textEn": "And God said, \"Let there be light,\" and there was light."
+      },
+      {
+        "verseNumber": 4,
+        "textCn": "神看光是好的，就把光暗分开了。",
+        "textEn": "God saw that the light was good, and he separated the light from the darkness."
+      },
+      {
+        "verseNumber": 5,
+        "textCn": "神称光为'昼'，称暗为'夜'。有晚上，有早晨，这是头一日。",
+        "textEn": "God called the light \"day,\" and the darkness he called \"night.\" And there was evening, and there was morning—the first day."
+      }
+    ]
+  },
+  {
+    "bookId": 1,
+    "chapterNumber": 2,
+    "verseCount": 25,
+    "verses": [
+      {
+        "verseNumber": 1,
+        "textCn": "天地万物都造齐了。",
+        "textEn": "Thus the heavens and the earth were completed in all their vast array."
+      },
+      {
+        "verseNumber": 2,
+        "textCn": "到第七日，神造物的工已经完毕，就在第七日歇了他一切的工，安息了。",
+        "textEn": "By the seventh day God had finished the work he had been doing; so on the seventh day he rested from all his work."
+      },
+      {
+        "verseNumber": 3,
+        "textCn": "神赐福给第七日，定为圣日；因为在这日，神歇了他一切创造的工，就安息了。",
+        "textEn": "Then God blessed the seventh day and made it holy, because on it he rested from all the work of creating that he had done."
+      }
+    ]
+  },
+  {
+    "bookId": 40,
+    "chapterNumber": 1,
+    "verseCount": 25,
+    "verses": [
+      {
+        "verseNumber": 1,
+        "textCn": "亚伯拉罕的后裔，大卫的子孙（后裔，子孙：原文是儿子；下同），耶稣基督的家谱：",
+        "textEn": "This is the genealogy of Jesus the Messiah the son of David, the son of Abraham:"
+      },
+      {
+        "verseNumber": 2,
+        "textCn": "亚伯拉罕生以撒；以撒生雅各；雅各生犹大和他的弟兄；",
+        "textEn": "Abraham was the father of Isaac, Isaac the father of Jacob, Jacob the father of Judah and his brothers,"
+      },
+      {
+        "verseNumber": 3,
+        "textCn": "犹大从他玛氏生法勒斯和谢拉；法勒斯生希斯仑；希斯仑生亚兰；",
+        "textEn": "Judah the father of Perez and Zerah, whose mother was Tamar, Perez the father of Hezron, Hezron the father of Ram,"
+      }
+    ]
+  },
+  {
+    "bookId": 43,
+    "chapterNumber": 1,
+    "verseCount": 51,
+    "verses": [
+      {
+        "verseNumber": 1,
+        "textCn": "太初有道，道与神同在，道就是神。",
+        "textEn": "In the beginning was the Word, and the Word was with God, and the Word was God."
+      },
+      {
+        "verseNumber": 2,
+        "textCn": "这道太初与神同在。",
+        "textEn": "He was with God in the beginning."
+      },
+      {
+        "verseNumber": 3,
+        "textCn": "万物是借着他造的；凡被造的，没有一样不是借着他造的。",
+        "textEn": "Through him all things were made; without him nothing was made that has been made."
+      },
+      {
+        "verseNumber": 4,
+        "textCn": "生命在他里头，这生命就是人的光。",
+        "textEn": "In him was life, and that life was the light of all mankind."
+      },
+      {
+        "verseNumber": 5,
+        "textCn": "光照在黑暗里，黑暗却不接受光。",
+        "textEn": "The light shines in the darkness, and the darkness has not overcome it."
+      }
+    ]
+  },
+  {
+    "bookId": 19,
+    "chapterNumber": 23,
+    "verseCount": 6,
+    "verses": [
+      {
+        "verseNumber": 1,
+        "textCn": "（大卫的诗。）耶和华是我的牧者，我必不致缺乏。",
+        "textEn": "The Lord is my shepherd, I lack nothing."
+      },
+      {
+        "verseNumber": 2,
+        "textCn": "他使我躺卧在青草地上，领我在可安歇的水边。",
+        "textEn": "He makes me lie down in green pastures, he leads me beside quiet waters,"
+      },
+      {
+        "verseNumber": 3,
+        "textCn": "他使我的灵魂苏醒，为自己的名引导我走义路。",
+        "textEn": "he refreshes my soul. He guides me along the right paths for his name's sake."
+      },
+      {
+        "verseNumber": 4,
+        "textCn": "我虽然行过死荫的幽谷，也不怕遭害，因为你与我同在；你的杖，你的竿，都安慰我。",
+        "textEn": "Even though I walk through the darkest valley, I will fear no evil, for you are with me; your rod and your staff, they comfort me."
+      },
+      {
+        "verseNumber": 5,
+        "textCn": "在我敌人面前，你为我摆设筵席；你用油膏了我的头，使我的福杯满溢。",
+        "textEn": "You prepare a table before me in the presence of my enemies. You anoint my head with oil; my cup overflows."
+      },
+      {
+        "verseNumber": 6,
+        "textCn": "我一生一世必有恩惠慈爱随着我；我且要住在耶和华的殿中，直到永远。",
+        "textEn": "Surely your goodness and love will follow me all the days of my life, and I will dwell in the house of the Lord forever."
+      }
+    ]
+  }
+]

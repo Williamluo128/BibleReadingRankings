@@ -1,0 +1,180 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(cuid())
+  username         String   @unique
+  email            String   @unique
+  passwordHash     String   @map("password_hash")
+  displayName      String   @map("display_name")
+  avatarUrl        String?  @map("avatar_url")
+  role             String   @default("USER") // USER | ADMIN | SUPER_ADMIN
+  resetToken       String?  @map("reset_token")
+  resetTokenExpiry DateTime? @map("reset_token_expiry")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  readingRecords    ReadingRecord[]
+  dailyStats        DailyStats[]
+  sentRequests      Friendship[]    @relation("FriendshipRequester")
+  receivedRequests  Friendship[]    @relation("FriendshipAddressee")
+  ownedGroups       Group[]         @relation("GroupOwner")
+  groupMemberships  GroupMember[]
+  authoredNotices   GroupNotice[]   @relation("GroupNoticeAuthor")
+
+  @@map("users")
+}
+
+model BibleBook {
+  id           Int      @id
+  nameCn       String   @map("name_cn")
+  nameCnShort  String   @map("name_cn_short")
+  nameEn       String   @map("name_en")
+  abbreviation String
+  testament    String
+  bookOrder    Int      @map("book_order")
+
+  // Relations
+  chapters     BibleChapter[]
+
+  @@map("bible_books")
+}
+
+model BibleChapter {
+  id            String   @id @default(cuid())
+  bookId        Int      @map("book_id")
+  chapterNumber Int      @map("chapter_number")
+  verseCount    Int      @map("verse_count")
+
+  // Relations
+  book          BibleBook    @relation(fields: [bookId], references: [id])
+  verses        BibleVerse[]
+
+  @@unique([bookId, chapterNumber])
+  @@map("bible_chapters")
+}
+
+model BibleVerse {
+  id          String   @id @default(cuid())
+  chapterId   String   @map("chapter_id")
+  verseNumber Int      @map("verse_number")
+  textCn      String   @map("text_cn")
+  textEn      String   @map("text_en")
+
+  // Relations
+  chapter        BibleChapter    @relation(fields: [chapterId], references: [id])
+  readingRecords ReadingRecord[]
+
+  @@unique([chapterId, verseNumber])
+  @@map("bible_verses")
+}
+
+model ReadingRecord {
+  id      String   @id @default(cuid())
+  userId  String   @map("user_id")
+  verseId String   @map("verse_id")
+  readAt  DateTime @default(now()) @map("read_at")
+  date    String   // YYYY-MM-DD format
+
+  // Relations
+  user    User       @relation(fields: [userId], references: [id])
+  verse   BibleVerse @relation(fields: [verseId], references: [id])
+
+  @@unique([userId, verseId])
+  @@index([userId, date])
+  @@map("reading_records")
+}
+
+model DailyStats {
+  id         String @id @default(cuid())
+  userId     String @map("user_id")
+  date       String // YYYY-MM-DD format
+  versesRead Int    @map("verses_read")
+
+  // Relations
+  user       User   @relation(fields: [userId], references: [id])
+
+  @@unique([userId, date])
+  @@index([date, versesRead])
+  @@map("daily_stats")
+}
+
+model Friendship {
+  id          String           @id @default(cuid())
+  requesterId String           @map("requester_id")
+  addresseeId String           @map("addressee_id")
+  status      String @default("PENDING")
+  createdAt   DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  requester   User             @relation("FriendshipRequester", fields: [requesterId], references: [id])
+  addressee   User             @relation("FriendshipAddressee", fields: [addresseeId], references: [id])
+
+  @@unique([requesterId, addresseeId])
+  @@map("friendships")
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  code        String   @unique // 群组代码
+  ownerId     String   @map("owner_id")
+  isPublic    Boolean  @default(false) @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  owner       User          @relation("GroupOwner", fields: [ownerId], references: [id])
+  members     GroupMember[]
+  notices     GroupNotice[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String   @id @default(cuid())
+  groupId   String   @map("group_id")
+  userId    String   @map("user_id")
+  role      String   @default("MEMBER") // MEMBER | ADMIN | OWNER
+  joinedAt  DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@unique([groupId, userId])
+  @@map("group_members")
+}
+
+model GroupNotice {
+  id        String   @id @default(cuid())
+  groupId   String   @map("group_id")
+  authorId  String   @map("author_id")
+  title     String
+  content   String
+  isPinned  Boolean  @default(false) @map("is_pinned")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author    User     @relation("GroupNoticeAuthor", fields: [authorId], references: [id])
+
+  @@map("group_notices")
+}
+
+// Note: SQLite doesn't support enums, using String instead
+// Testament: "OT" | "NT"
+// FriendshipStatus: "PENDING" | "ACCEPTED" | "BLOCKED"
+// GroupRole: "MEMBER" | "ADMIN" | "OWNER"
