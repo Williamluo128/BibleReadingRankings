@@ -99,21 +99,21 @@ async function seedSampleChapters() {
 
 async function createSampleUser() {
   console.log('👤 Creating sample user...');
-  
-  const bcrypt = await import('bcrypt');
-  const passwordHash = await bcrypt.hash('password123', 12);
-  
+
+  // Supabase Auth 接管登录后,seed 不再创建带密码的用户。
+  // 这里创建一个仅供演示读经数据的占位账号(supabaseUid 为本地占位值),
+  // 真实用户通过 Google 登录后由 auth 中间件自动写入。
   const user = await prisma.user.upsert({
     where: { email: 'demo@example.com' },
     update: {},
     create: {
+      supabaseUid: 'demo-local-placeholder-uid',
       username: 'demo_user',
       email: 'demo@example.com',
-      passwordHash,
       displayName: '演示用户',
     },
   });
-  
+
   console.log(`✅ Created sample user: ${user.displayName} (${user.email})`);
   return user;
 }

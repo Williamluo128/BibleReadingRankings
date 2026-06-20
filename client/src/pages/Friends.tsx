@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useFriendshipStore } from '@/stores/friendship.store';
-import { Button } from '@/components/ui/Button';
 import { Navigation } from '@/components/Navigation';
 import { useAuthStore } from '@/stores/auth.store';
 
@@ -9,7 +8,6 @@ export const FriendsPage: React.FC = () => {
   const {
     friends,
     receivedRequests,
-    sentRequests,
     searchResults,
     isLoading,
     isSearching,
@@ -72,250 +70,208 @@ export const FriendsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Navigation />
-      <div className="max-w-4xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">好友管理</h1>
-          <p className="mt-2 text-gray-600">添加好友，查看彼此的阅读进度</p>
-        </div>
-
-        {/* Error Message */}
-        {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center justify-between">
-            <span>{error}</span>
-            <button
-              onClick={clearError}
-              className="text-red-500 hover:text-red-700"
-            >
-              ✕
-            </button>
+      <div className="max-w-4xl mx-auto py-12 px-8">
+        {/* Header - Minimalist */}
+        <div className="mb-12 flex flex-col md:flex-row justify-between items-end border-b border-gray-100 pb-8">
+          <div>
+            <h1 className="text-4xl font-light text-gray-900 mb-2 tracking-tight">好友</h1>
+            <p className="text-gray-500 font-light">管理你的好友列表和请求</p>
           </div>
-        )}
 
-        {/* Tabs */}
-        <div className="mb-6 border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          {/* Tabs - Minimalist Text */}
+          <div className="flex space-x-8 mt-8 md:mt-0">
             <button
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'friends'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`pb-1 text-sm uppercase tracking-wider transition-colors ${activeTab === 'friends'
+                ? 'text-gray-900 border-b border-gray-900 font-medium'
+                : 'text-gray-400 hover:text-gray-600 border-b border-transparent'
+                }`}
               onClick={() => setActiveTab('friends')}
             >
               我的好友 ({friends.length})
             </button>
             <button
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'requests'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`pb-1 text-sm uppercase tracking-wider transition-colors ${activeTab === 'requests'
+                ? 'text-gray-900 border-b border-gray-900 font-medium'
+                : 'text-gray-400 hover:text-gray-600 border-b border-transparent'
+                }`}
               onClick={() => setActiveTab('requests')}
             >
-              好友请求 ({receivedRequests.length})
+              请求 ({receivedRequests.length})
             </button>
             <button
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'search'
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }`}
+              className={`pb-1 text-sm uppercase tracking-wider transition-colors ${activeTab === 'search'
+                ? 'text-gray-900 border-b border-gray-900 font-medium'
+                : 'text-gray-400 hover:text-gray-600 border-b border-transparent'
+                }`}
               onClick={() => setActiveTab('search')}
             >
               添加好友
             </button>
-          </nav>
+          </div>
         </div>
 
+        {/* Error Message */}
+        {error && (
+          <div className="mb-8 border-l-2 border-red-500 pl-4 py-2 text-red-600 flex justify-between">
+            <span>{error}</span>
+            <button onClick={clearError} className="text-gray-400 hover:text-gray-900">✕</button>
+          </div>
+        )}
+
         {/* Content */}
-        <div className="bg-white rounded-lg shadow">
+        <div>
           {activeTab === 'friends' && (
-            <div className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">我的好友</h2>
+            <div>
               {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">加载中...</p>
-                </div>
+                <div className="text-center py-12 text-gray-300 animate-pulse">加载中...</div>
               ) : friends.length > 0 ? (
-                <div className="space-y-4">
+                <div className="space-y-0">
                   {friends.map((friend) => (
-                    <div key={friend.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                          <span className="text-primary-600 font-semibold text-lg">
-                            {friend.displayName.charAt(0)}
-                          </span>
+                    <div key={friend.id} className="group flex items-center justify-between py-6 border-b border-gray-100 hover:bg-gray-50 transition-colors px-4 -mx-4">
+                      <div className="flex items-center space-x-6">
+                        <div className="w-12 h-12 bg-gray-100 flex items-center justify-center text-gray-500 text-lg font-medium">
+                          {friend.displayName.charAt(0)}
                         </div>
                         <div>
-                          <h3 className="font-medium text-gray-900">{friend.displayName}</h3>
-                          <p className="text-sm text-gray-500">@{friend.username}</p>
+                          <h3 className="text-gray-900 font-medium">{friend.displayName}</h3>
+                          <p className="text-xs text-gray-400 font-mono">@{friend.username}</p>
                           <div className="text-xs text-gray-400 mt-1">
-                            成为好友于 {new Date(friend.friendshipDate).toLocaleDateString()}
+                            {new Date(friend.friendshipDate).toLocaleDateString()} 添加
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-4">
-                        <div className="text-right text-sm">
-                          <div className="text-gray-900 font-medium">
-                            今日: {friend.totalStats.todayVerses} 节
+                      <div className="flex items-center space-x-8">
+                        <div className="text-right hidden sm:block">
+                          <div className="text-gray-900 font-light">
+                            {friend.totalStats.todayVerses} <span className="text-xs text-gray-400">今日</span>
                           </div>
-                          <div className="text-gray-500">
-                            总计: {friend.totalStats.totalVerses} 节
-                          </div>
-                          <div className="text-gray-500">
-                            {friend.totalStats.totalDays} 天
+                          <div className="text-xs text-gray-400">
+                            累计 {friend.totalStats.totalVerses}
                           </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
+                        <button
                           onClick={() => handleRemoveFriend(friend.id)}
                           disabled={isLoading}
+                          className="text-xs uppercase tracking-wider text-gray-400 hover:text-red-600 transition-colors"
                         >
                           删除
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">还没有好友</h3>
-                  <p className="text-gray-600">去添加一些好友，一起分享阅读进度吧！</p>
+                <div className="text-center py-24">
+                  <h3 className="text-xl font-light text-gray-900 mb-2">暂无好友</h3>
+                  <p className="text-gray-400 font-light">去添加一些好友，一起分享阅读进度吧！</p>
                 </div>
               )}
             </div>
           )}
 
           {activeTab === 'requests' && (
-            <div className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">好友请求</h2>
+            <div>
               {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">加载中...</p>
-                </div>
+                <div className="text-center py-12 text-gray-300 animate-pulse">加载中...</div>
               ) : receivedRequests.length > 0 ? (
-                <div className="space-y-4">
-                  <h3 className="font-medium text-gray-700">收到的请求</h3>
+                <div className="space-y-0">
                   {receivedRequests.map((request) => (
-                    <div key={request.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                          <span className="text-primary-600 font-semibold text-lg">
-                            {request.requester.displayName.charAt(0)}
-                          </span>
+                    <div key={request.id} className="flex items-center justify-between py-6 border-b border-gray-100">
+                      <div className="flex items-center space-x-6">
+                        <div className="w-12 h-12 bg-gray-100 flex items-center justify-center text-gray-500 text-lg font-medium">
+                          {request.requester.displayName.charAt(0)}
                         </div>
                         <div>
-                          <h3 className="font-medium text-gray-900">{request.requester.displayName}</h3>
-                          <p className="text-sm text-gray-500">@{request.requester.username}</p>
+                          <h3 className="text-gray-900 font-medium">{request.requester.displayName}</h3>
+                          <p className="text-xs text-gray-400 font-mono">@{request.requester.username}</p>
                           <div className="text-xs text-gray-400 mt-1">
                             {new Date(request.createdAt).toLocaleDateString()}
                           </div>
                         </div>
                       </div>
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
+                      <div className="flex space-x-4">
+                        <button
                           onClick={() => handleRespondToRequest(request.id, 'accept')}
                           disabled={isLoading}
+                          className="text-sm font-medium text-gray-900 hover:text-gray-600"
                         >
                           接受
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
+                        </button>
+                        <button
                           onClick={() => handleRespondToRequest(request.id, 'reject')}
                           disabled={isLoading}
+                          className="text-sm text-gray-400 hover:text-gray-600"
                         >
                           拒绝
-                        </Button>
+                        </button>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
-                  </svg>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">没有待处理的好友请求</h3>
-                  <p className="text-gray-600">当有人向你发送好友请求时，会显示在这里</p>
+                <div className="text-center py-24">
+                  <h3 className="text-xl font-light text-gray-900 mb-2">暂无请求</h3>
+                  <p className="text-gray-400 font-light">没有待处理的好友请求</p>
                 </div>
               )}
             </div>
           )}
 
           {activeTab === 'search' && (
-            <div className="p-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-4">搜索并添加好友</h2>
-              
-              <form onSubmit={handleSearch} className="mb-6">
-                <div className="flex space-x-4">
+            <div>
+              <form onSubmit={handleSearch} className="mb-12 max-w-xl mx-auto">
+                <div className="relative">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="搜索用户名或昵称..."
-                    className="flex-1 rounded-lg border border-gray-300 px-4 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                    className="w-full py-4 px-0 bg-transparent border-b-2 border-gray-200 focus:border-gray-900 focus:outline-none text-xl font-light placeholder-gray-300 transition-colors"
                   />
-                  <Button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={isSearching || searchQuery.trim().length < 2}
+                    className="absolute right-0 bottom-4 text-sm uppercase tracking-widest font-medium text-gray-900 hover:text-gray-600 disabled:text-gray-300"
                   >
                     {isSearching ? '搜索中...' : '搜索'}
-                  </Button>
+                  </button>
                 </div>
               </form>
 
               {searchResults.length > 0 ? (
-                <div className="space-y-4">
-                  <h3 className="font-medium text-gray-700">搜索结果</h3>
+                <div className="space-y-0">
+                  <div className="text-xs uppercase tracking-widest text-gray-400 mb-4">搜索结果</div>
                   {searchResults.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div className="w-12 h-12 bg-primary-100 rounded-full flex items-center justify-center">
-                          <span className="text-primary-600 font-semibold text-lg">
-                            {user.displayName.charAt(0)}
-                          </span>
+                    <div key={user.id} className="flex items-center justify-between py-6 border-b border-gray-100">
+                      <div className="flex items-center space-x-6">
+                        <div className="w-12 h-12 bg-gray-100 flex items-center justify-center text-gray-500 text-lg font-medium">
+                          {user.displayName.charAt(0)}
                         </div>
                         <div>
-                          <h3 className="font-medium text-gray-900">{user.displayName}</h3>
-                          <p className="text-sm text-gray-500">@{user.username}</p>
+                          <h3 className="text-gray-900 font-medium">{user.displayName}</h3>
+                          <p className="text-xs text-gray-400 font-mono">@{user.username}</p>
                         </div>
                       </div>
-                      <Button
-                        size="sm"
+                      <button
                         onClick={() => handleSendRequest(user.id)}
                         disabled={isLoading}
+                        className="text-sm font-medium text-gray-900 hover:text-gray-600 disabled:text-gray-300"
                       >
                         添加好友
-                      </Button>
+                      </button>
                     </div>
                   ))}
                 </div>
               ) : searchQuery && !isSearching ? (
-                <div className="text-center py-8">
-                  <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">没有找到用户</h3>
-                  <p className="text-gray-600">试试其他搜索关键词</p>
+                <div className="text-center py-24">
+                  <h3 className="text-xl font-light text-gray-900 mb-2">未找到用户</h3>
+                  <p className="text-gray-400 font-light">请尝试其他关键词</p>
                 </div>
               ) : !searchQuery ? (
-                <div className="text-center py-8">
-                  <svg className="h-12 w-12 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">搜索用户</h3>
-                  <p className="text-gray-600">输入用户名或昵称来搜索其他用户</p>
+                <div className="text-center py-24">
+                  <p className="text-gray-400 font-light">输入关键词开始搜索</p>
                 </div>
               ) : null}
             </div>

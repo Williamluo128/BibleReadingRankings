@@ -1,41 +1,147 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Merriweather:wght@300;400;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
   html {
-    font-family: 'Inter', system-ui, sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   body {
     @apply text-gray-900 bg-white;
+    letter-spacing: -0.011em;
+  }
+  
+  /* Bible text specific styles */
+  .bible-text {
+    font-family: 'Merriweather', Georgia, serif;
+    font-size: 1.125rem;
+    line-height: 1.8;
+    color: #1a1a1a;
   }
 }
 
 @layer components {
-  .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
+  /* ========== Minimalist Button System ========== */
+  
+  /* Primary Button - Black solid */
+  .btn-minimal-primary {
+    @apply px-8 py-3 text-sm font-medium uppercase tracking-wide;
+    @apply bg-gray-900 text-white;
+    @apply hover:bg-gray-800;
+    @apply transition-colors duration-200;
+    @apply border-none rounded-none;
   }
   
-  .btn-secondary {
-    @apply bg-secondary-600 text-white hover:bg-secondary-700 focus:ring-secondary-500;
+  /* Secondary Button - White with border */
+  .btn-minimal-secondary {
+    @apply px-8 py-3 text-sm font-medium uppercase tracking-wide;
+    @apply bg-transparent text-gray-900;
+    @apply border-2 border-gray-900;
+    @apply hover:bg-gray-900 hover:text-white;
+    @apply transition-all duration-200;
+    @apply rounded-none;
+  }
+  
+  /* Text Button */
+  .btn-minimal-text {
+    @apply px-4 py-2 text-sm;
+    @apply text-gray-600 hover:text-gray-900;
+    @apply transition-colors duration-200;
+  }
+  
+  /* ========== Minimalist Cards ========== */
+  
+  .card-minimal {
+    @apply bg-white border border-gray-100;
+    @apply p-8 md:p-12;
+    @apply transition-shadow duration-300;
+    @apply rounded-none;
+  }
+  
+  .card-minimal-hover {
+    @apply card-minimal;
+    @apply hover:shadow-sm;
+  }
+  
+  /* ========== Minimalist Inputs ========== */
+  
+  .input-minimal {
+    @apply w-full px-0 py-3;
+    @apply border-b-2 border-gray-200;
+    @apply focus:border-gray-900 focus:outline-none;
+    @apply bg-transparent text-gray-900;
+    @apply transition-colors duration-200;
+    @apply rounded-none;
+  }
+  
+  .input-minimal-label {
+    @apply block text-xs uppercase tracking-wider text-gray-500 mb-3;
+  }
+  
+  /* ========== Minimalist Navigation ========== */
+  
+  .nav-link-minimal {
+    @apply text-sm text-gray-600 hover:text-gray-900;
+    @apply transition-colors duration-200;
+  }
+  
+  .nav-link-minimal-active {
+    @apply text-sm text-gray-900 font-medium;
+  }
+  
+  /* ========== Minimalist Dividers ========== */
+  
+  .divider-minimal {
+    @apply border-t border-gray-100;
+  }
+  
+  /* ========== Minimalist Grid ========== */
+  
+  .grid-minimal {
+    @apply grid gap-px bg-gray-100;
+  }
+  
+  /* ========== Typography Hierarchy ========== */
+  
+  .text-display {
+    @apply text-5xl md:text-6xl font-light tracking-tighter;
+    line-height: 1.1;
+  }
+  
+  .text-heading {
+    @apply text-2xl md:text-3xl font-normal tracking-tight;
+    line-height: 1.3;
+  }
+  
+  .text-subheading {
+    @apply text-lg md:text-xl font-normal;
+    line-height: 1.5;
+  }
+  
+  .text-label {
+    @apply text-xs font-medium uppercase tracking-wide text-gray-500;
   }
 }
 
-/* Custom scrollbar */
+/* Custom scrollbar - Minimalist */
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-gray-100;
+  @apply bg-transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-300 rounded-full;
+  @apply bg-gray-200 hover:bg-gray-300;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-400;
+/* Remove all border radius globally (Optional but recommended for this style) */
+* {
+  border-radius: 0 !important;
 }

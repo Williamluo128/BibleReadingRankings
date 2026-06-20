@@ -1,55 +1,40 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '@bible-rankings/shared';
+import { supabase } from '@/lib/supabase';
 import { AuthAPI } from '@/services/api';
 
 interface AuthState {
   user: User | null;
-  token: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
-  login: (emailOrUsername: string, password: string) => Promise<void>;
-  register: (username: string, email: string, password: string, displayName: string) => Promise<void>;
+  signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  setUser: (user: User | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
-      token: null,
       isAuthenticated: false,
       isLoading: false,
 
-      login: async (emailOrUsername: string, password: string) => {
+      signInWithGoogle: async () => {
         set({ isLoading: true });
         try {
-          const response = await AuthAPI.login({ emailOrUsername, password });
-          set({
-            user: response.user,
-            token: response.token,
-            isAuthenticated: true,
-            isLoading: false,
+          const { error } = await supabase.auth.signInWithOAuth({
+            provider: 'google',
+            options: {
+              redirectTo: `${window.location.origin}/auth/callback`,
+            },
           });
-          localStorage.setItem('auth_token', response.token);
-        } catch (error) {
-          set({ isLoading: false });
-          throw error;
-        }
-      },
-
-      register: async (username: string, email: string, password: string, displayName: string) => {
-        set({ isLoading: true });
-        try {
-          const response = await AuthAPI.register({ username, email, password, displayName });
-          set({
-            user: response.user,
-            token: response.token,
-            isAuthenticated: true,
-            isLoading: false,
-          });
-          localStorage.setItem('auth_token', response.token);
+          if (error) {
+            set({ isLoading: false });
+            throw error;
+          }
+          // 浏览器会跳转到 Google,不需要在这里设 isAuthenticated
         } catch (error) {
           set({ isLoading: false });
           throw error;
@@ -58,55 +43,79 @@ export const useAuthStore = create<AuthState>()(
 
       logout: async () => {
         try {
-          await AuthAPI.logout();
+          await supabase.auth.signOut();
         } catch (error) {
           console.error('Logout error:', error);
         } finally {
           set({
             user: null,
-            token: null,
             isAuthenticated: false,
             isLoading: false,
           });
-          localStorage.removeItem('auth_token');
         }
       },
 
       checkAuth: async () => {
-        const token = localStorage.getItem('auth_token');
-        if (!token) {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
           set({ isAuthenticated: false, isLoading: false });
           return;
         }
 
         set({ isLoading: true });
         try {
-          const response = await AuthAPI.getCurrentUser();
+          // 调后端 /auth/me → 触发 upsert + 获取本地用户
+          const user = await AuthAPI.getCurrentUser();
           set({
-            user: response.user,
-            token,
+            user,
             isAuthenticated: true,
             isLoading: false,
           });
         } catch (error) {
           console.error('Auth check failed:', error);
-          localStorage.removeItem('auth_token');
+          // session 无效则登出
+          await supabase.auth.signOut();
           set({
             user: null,
-            token: null,
             isAuthenticated: false,
             isLoading: false,
           });
         }
+      },
+
+      setUser: (user: User | null) => {
+        set({ user, isAuthenticated: !!user });
       },
     }),
     {
       name: 'auth-storage',
       partialize: (state) => ({
         user: state.user,
-        token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
     }
   )
 );
+
+// 全局监听 Supabase auth 状态变化(session 建立/销毁)
+supabase.auth.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_IN' && session) {
+    // 新 session 建立(如 OAuth 回调后):调后端同步用户
+    try {
+      const user = await AuthAPI.getCurrentUser();
+      const store = useAuthStore.getState();
+      store.setUser(user);
+      useAuthStore.setState({ isLoading: false });
+    } catch (error) {
+      console.error('Failed to sync user after sign in:', error);
+      useAuthStore.setState({ isLoading: false });
+    }
+  } else if (event === 'SIGNED_OUT') {
+    useAuthStore.setState({
+      user: null,
+      isAuthenticated: false,
+      isLoading: false,
+    });
+  }
+});

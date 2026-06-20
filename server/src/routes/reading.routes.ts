@@ -25,4 +25,13 @@ router.get('/stats/total', ReadingController.getTotalStats);
 // POST /api/reading/status - 检查经文阅读状态
 router.post('/status', ReadingController.getReadStatus);
 
+// GET /api/reading/trends - 获取阅读趋势数据
+router.get('/trends', ReadingController.getReadingTrends);
+
+// GET /api/reading/heatmap - 获取阅读热力图数据
+router.get('/heatmap', ReadingController.getReadingHeatmap);
+
+// GET /api/reading/progress - 获取阅读进度统计
+router.get('/progress', ReadingController.getProgressStats);
+
 export { router as readingRoutes };

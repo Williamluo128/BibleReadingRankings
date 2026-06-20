@@ -12,30 +12,10 @@ export interface User {
   updatedAt: Date;
 }
 
-export interface CreateUserRequest {
-  username: string;
-  email: string;
-  password: string;
-  displayName: string;
-}
-
-export interface LoginRequest {
-  emailOrUsername: string; // 可以是邮箱或用户名
-  password: string;
-}
-
-export interface ForgotPasswordRequest {
-  email: string;
-}
-
-export interface ResetPasswordRequest {
-  token: string;
-  newPassword: string;
-}
-
-export interface AuthResponse {
-  user: User;
-  token: string;
+// 资料更新请求(Supabase Auth 接管登录/注册/密码,本地仅存业务字段)
+export interface UpdateProfileRequest {
+  displayName?: string;
+  avatarUrl?: string;
 }
 
 // 圣经相关类型

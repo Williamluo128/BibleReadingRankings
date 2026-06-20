@@ -12,14 +12,12 @@ datasource db {
 
 model User {
   id               String   @id @default(cuid())
+  supabaseUid      String   @unique @map("supabase_uid")
   username         String   @unique
   email            String   @unique
-  passwordHash     String   @map("password_hash")
   displayName      String   @map("display_name")
   avatarUrl        String?  @map("avatar_url")
   role             String   @default("USER") // USER | ADMIN | SUPER_ADMIN
-  resetToken       String?  @map("reset_token")
-  resetTokenExpiry DateTime? @map("reset_token_expiry")
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 

@@ -1,5 +1,5 @@
 import { api } from './api';
-import type { 
+import type {
   ApiResponse,
   ReadingRecord,
   DailyStats
@@ -26,10 +26,57 @@ interface TotalStatsResponse {
   totalVerses: number;
   totalDays: number;
   todayVerses: number;
+  currentStreak: number;
 }
 
 interface ReadStatusResponse {
   readVerseIds: string[];
+}
+
+interface ReadingTrendData {
+  date: string;
+  versesRead: number;
+}
+
+interface ReadingTrendsResponse {
+  trends: ReadingTrendData[];
+}
+
+interface HeatmapData {
+  date: string;
+  count: number;
+  level: number;
+}
+
+interface ReadingHeatmapResponse {
+  heatmap: HeatmapData[];
+}
+
+interface ProgressStatsResponse {
+  overall: {
+    totalChapters: number;
+    readChapters: number;
+    chaptersProgress: number;
+    totalVerses: number;
+    readVerses: number;
+    versesProgress: number;
+  };
+  testament: {
+    oldTestament: number;
+    newTestament: number;
+  };
+  books: Array<{
+    bookId: number;
+    bookName: string;
+    testament: string;
+    totalVerses: number;
+    readVerses: number;
+    progress: number;
+  }>;
+  streaks: {
+    current: number;
+    longest: number;
+  };
 }
 
 export class ReadingAPI {
@@ -79,4 +126,35 @@ export class ReadingAPI {
     });
     return response.data.data!.readVerseIds;
   }
+
+  // 获取阅读趋势数据
+  static async getReadingTrends(days: number = 30): Promise<ReadingTrendData[]> {
+    const response = await api.get<ApiResponse<ReadingTrendsResponse>>('/reading/trends', {
+      params: { days }
+    });
+    return response.data.data!.trends;
+  }
+
+  // 获取阅读热力图数据
+  static async getReadingHeatmap(year?: number): Promise<HeatmapData[]> {
+    const params = year ? { year } : {};
+    const response = await api.get<ApiResponse<ReadingHeatmapResponse>>('/reading/heatmap', {
+      params
+    });
+    return response.data.data!.heatmap;
+  }
+
+  // 获取阅读进度统计
+  static async getProgressStats(): Promise<ProgressStatsResponse> {
+    const response = await api.get<ApiResponse<ProgressStatsResponse>>('/reading/progress');
+    return response.data.data!;
+  }
 }
+
+// 导出类型
+export type {
+  ReadingTrendData,
+  HeatmapData,
+  ProgressStatsResponse,
+  TotalStatsResponse,
+};

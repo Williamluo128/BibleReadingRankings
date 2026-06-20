@@ -1,270 +1,123 @@
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
 import { prisma } from '@/config/database';
 import { env } from '@/config/env';
-import { EmailService } from './email.service';
-import type { 
-  CreateUserRequest, 
-  LoginRequest, 
-  AuthResponse, 
-  User,
-  ForgotPasswordRequest,
-  ResetPasswordRequest 
-} from '@bible-rankings/shared';
+import type { User, UpdateProfileRequest } from '@bible-rankings/shared';
+
+// 抹掉 Prisma 返回里的内部字段,并把 null 归一化为 undefined 以匹配 shared User 类型
+function toUser(row: any): User {
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    displayName: row.displayName,
+    avatarUrl: row.avatarUrl ?? undefined,
+    role: row.role,
+    createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
+/**
+ * 从 Supabase JWT 解析出的用户身份,在本地 users 表里 upsert 一条记录。
+ * 首次登录自动建号;username 从邮箱前缀生成;命中 ADMIN_EMAILS 的赋予 SUPER_ADMIN。
+ * 中间件每次请求都会调用,因此 update 分支只同步可能变化的字段(email/头像)。
+ */
+export interface SupabaseUserInfo {
+  sub: string;            // Supabase auth.users.id (UUID)
+  email: string;
+  name?: string | null;   // user_metadata.full_name
+  avatarUrl?: string | null;
+}
 
 export class AuthService {
-  static async register(userData: CreateUserRequest): Promise<AuthResponse> {
-    const { username, email, password, displayName } = userData;
+  /**
+   * 按 Supabase uid 查本地用户(中间件验签后用)
+   */
+  static async getUserBySupabaseUid(supabaseUid: string): Promise<User | null> {
+    const user = await prisma.user.findUnique({ where: { supabaseUid } });
+    return user ? toUser(user) : null;
+  }
 
-    // Check if user already exists
-    const existingUser = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email },
-          { username }
-        ]
-      }
+  /**
+   * 按本地 id 查用户(admin / profile 用)
+   */
+  static async getUserById(id: string): Promise<User | null> {
+    const user = await prisma.user.findUnique({ where: { id } });
+    return user ? toUser(user) : null;
+  }
+
+  /**
+   * 首次/后续 Google 登录时,把 Supabase 身份同步到本地 users 表。
+   * 返回本地 User(即注入 req.user 的对象)。
+   */
+  static async upsertUserFromSupabase(info: SupabaseUserInfo): Promise<User> {
+    const isAdmin = env.ADMIN_EMAILS.includes(info.email.toLowerCase());
+    const baseUsername = (info.email.split('@')[0] || 'user')
+      .replace(/[^a-zA-Z0-9_]/g, '')
+      .slice(0, 28) || 'user';
+    const displayName = info.name?.trim() || info.email.split('@')[0] || 'User';
+
+    // upsert:已存在则同步 email/头像;不存在则 create(含 username 生成)
+    const existing = await prisma.user.findUnique({
+      where: { supabaseUid: info.sub },
     });
 
-    if (existingUser) {
-      throw new Error('User already exists with this email or username');
+    if (existing) {
+      const updated = await prisma.user.update({
+        where: { supabaseUid: info.sub },
+        data: {
+          email: info.email,
+          avatarUrl: info.avatarUrl ?? existing.avatarUrl,
+        },
+      });
+      return toUser(updated);
     }
 
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 12);
-
-    // Create user
-    const newUser = await prisma.user.create({
+    const username = await this.generateUniqueUsername(baseUsername);
+    const created = await prisma.user.create({
       data: {
+        supabaseUid: info.sub,
+        email: info.email,
         username,
-        email,
-        passwordHash,
         displayName,
+        avatarUrl: info.avatarUrl ?? null,
+        role: isAdmin ? 'SUPER_ADMIN' : 'USER',
       },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        displayName: true,
-        avatarUrl: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      }
     });
-
-    // Generate JWT
-    const token = this.generateToken(newUser.id);
-
-    return {
-      user: newUser as User,
-      token,
-    };
+    return toUser(created);
   }
 
-  static async login(loginData: LoginRequest): Promise<AuthResponse> {
-    const { emailOrUsername, password } = loginData;
-
-    // 检查是否是邮箱格式
-    const isEmail = emailOrUsername.includes('@');
-    
-    // Find user by email or username
-    const user = await prisma.user.findFirst({
-      where: isEmail 
-        ? { email: emailOrUsername }
-        : { username: emailOrUsername },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        displayName: true,
-        avatarUrl: true,
-        role: true,
-        passwordHash: true,
-        createdAt: true,
-        updatedAt: true,
-      }
-    });
-
-    if (!user) {
-      throw new Error(isEmail ? '邮箱不存在' : '用户名不存在');
+  /**
+   * 生成唯一 username:邮箱前缀;冲突则加 -2、-3 …
+   */
+  static async generateUniqueUsername(base: string): Promise<string> {
+    let candidate = base;
+    let n = 2;
+    // 限循环次数,避免极端情况下死循环
+    for (let i = 0; i < 1000; i++) {
+      const clash = await prisma.user.findUnique({ where: { username: candidate } });
+      if (!clash) return candidate;
+      candidate = `${base}-${n++}`;
     }
-
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(password, user.passwordHash);
-    if (!isPasswordValid) {
-      throw new Error('密码错误');
-    }
-
-    // Generate JWT
-    const token = this.generateToken(user.id);
-
-    // Remove password from response
-    const { passwordHash, ...userWithoutPassword } = user;
-
-    return {
-      user: userWithoutPassword as User,
-      token,
-    };
+    // 兜底:加一段随机后缀
+    return `${base}-${Math.random().toString(36).slice(2, 8)}`;
   }
 
-  static async getUserById(userId: string): Promise<User | null> {
-    const user = await prisma.user.findUnique({
+  /**
+   * 更新自己的资料(.displayName / avatarUrl)
+   */
+  static async updateProfile(userId: string, data: UpdateProfileRequest): Promise<User> {
+    const updateData: any = {};
+    if (data.displayName !== undefined) {
+      updateData.displayName = data.displayName;
+    }
+    if (data.avatarUrl !== undefined) {
+      updateData.avatarUrl = data.avatarUrl;
+    }
+
+    const updated = await prisma.user.update({
       where: { id: userId },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        displayName: true,
-        avatarUrl: true,
-        role: true,
-        createdAt: true,
-        updatedAt: true,
-      }
+      data: updateData,
     });
-
-    return user as User | null;
-  }
-
-  static generateToken(userId: string): string {
-    return jwt.sign({ userId }, env.JWT_SECRET, {
-      expiresIn: env.JWT_EXPIRES_IN,
-    });
-  }
-
-  static verifyToken(token: string): { userId: string } {
-    try {
-      const payload = jwt.verify(token, env.JWT_SECRET) as { userId: string };
-      return payload;
-    } catch (error) {
-      throw new Error('Invalid token');
-    }
-  }
-
-  // 忘记密码 - 生成重置令牌
-  static async forgotPassword(email: string): Promise<void> {
-    const user = await prisma.user.findUnique({
-      where: { email },
-      select: {
-        id: true,
-        username: true,
-        email: true
-      }
-    });
-
-    if (!user) {
-      throw new Error('邮箱不存在');
-    }
-
-    // 生成重置令牌
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1小时后过期
-
-    // 保存重置令牌到数据库
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        resetToken,
-        resetTokenExpiry
-      }
-    });
-
-    // 发送密码重置邮件
-    try {
-      await EmailService.sendPasswordResetEmail(
-        user.email,
-        resetToken,
-        user.username
-      );
-      console.log(`密码重置邮件已发送到: ${email}`);
-    } catch (error) {
-      console.error('发送密码重置邮件失败:', error);
-      // 即使邮件发送失败，我们也不抛出错误，避免暴露用户是否存在
-      // 在生产环境中，应该有重试机制或者记录失败日志
-    }
-  }
-
-  // 重置密码
-  static async resetPassword(token: string, newPassword: string): Promise<void> {
-    const user = await prisma.user.findFirst({
-      where: {
-        resetToken: token,
-        resetTokenExpiry: {
-          gte: new Date() // 令牌未过期
-        }
-      }
-    });
-
-    if (!user) {
-      throw new Error('重置令牌无效或已过期');
-    }
-
-    // 哈希新密码
-    const passwordHash = await bcrypt.hash(newPassword, 12);
-
-    // 更新密码并清除重置令牌
-    await prisma.user.update({
-      where: { id: user.id },
-      data: {
-        passwordHash,
-        resetToken: null,
-        resetTokenExpiry: null
-      }
-    });
-  }
-
-  // 验证重置令牌
-  static async validateResetToken(token: string): Promise<boolean> {
-    const user = await prisma.user.findFirst({
-      where: {
-        resetToken: token,
-        resetTokenExpiry: {
-          gte: new Date()
-        }
-      }
-    });
-
-    return !!user;
-  }
-
-  // 用户修改密码
-  static async changePassword(
-    userId: string, 
-    currentPassword: string, 
-    newPassword: string
-  ): Promise<void> {
-    // 获取用户当前密码哈希
-    const user = await prisma.user.findUnique({
-      where: { id: userId },
-      select: {
-        id: true,
-        passwordHash: true
-      }
-    });
-
-    if (!user) {
-      throw new Error('用户不存在');
-    }
-
-    // 验证当前密码
-    const isCurrentPasswordValid = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!isCurrentPasswordValid) {
-      throw new Error('当前密码错误');
-    }
-
-    // 哈希新密码
-    const newPasswordHash = await bcrypt.hash(newPassword, 12);
-
-    // 更新密码
-    await prisma.user.update({
-      where: { id: userId },
-      data: {
-        passwordHash: newPasswordHash,
-        // 清除重置令牌（如果有的话）
-        resetToken: null,
-        resetTokenExpiry: null
-      }
-    });
+    return toUser(updated);
   }
 }

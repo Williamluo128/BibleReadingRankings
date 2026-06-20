@@ -1,6 +1,12 @@
 import { prisma } from '@/config/database';
-import bcrypt from 'bcrypt';
+import { createClient } from '@supabase/supabase-js';
+import { env } from '@/config/env';
 import type { User, UserRole } from '@bible-rankings/shared';
+
+// 后端管理员客户端(service_role key,可绕过 RLS,仅服务端使用)
+const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 export interface UserListQuery {
   page?: number;
@@ -283,15 +289,21 @@ export class AdminService {
   }
 
   /**
-   * 重置用户密码
+   * 重置用户密码(通过 Supabase Admin API,密码哈希由 Supabase 托管)
    */
   static async resetUserPassword(userId: string, newPassword: string): Promise<void> {
-    const passwordHash = await bcrypt.hash(newPassword, 12);
-    
-    await prisma.user.update({
-      where: { id: userId },
-      data: { passwordHash }
+    // 先查本地用户拿到 supabaseUid
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { supabaseUid: true } });
+    if (!user) {
+      throw new Error('用户不存在');
+    }
+
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(user.supabaseUid, {
+      password: newPassword,
     });
+    if (error) {
+      throw new Error(`重置密码失败: ${error.message}`);
+    }
   }
 
   /**

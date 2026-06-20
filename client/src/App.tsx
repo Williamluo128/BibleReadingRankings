@@ -3,9 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { useAuthStore } from '@/stores/auth.store';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { LoginPage } from '@/pages/Login';
-import { RegisterPage } from '@/pages/Register';
-import { ForgotPasswordPage } from '@/pages/ForgotPassword';
-import { ResetPasswordPage } from '@/pages/ResetPassword';
+import { AuthCallback } from '@/pages/AuthCallback';
 import { HomePage } from '@/pages/Home';
 import { BiblePage } from '@/pages/Bible';
 import { FriendsPage } from '@/pages/Friends';
@@ -14,6 +12,7 @@ import { GroupsPage } from '@/pages/Groups';
 import { SettingsPage } from '@/pages/Settings';
 import { AdminPage } from '@/pages/Admin';
 import { GroupManagementPage } from '@/pages/GroupManagement';
+import { AnalyticsPage } from '@/pages/Analytics';
 
 function App() {
   const { isAuthenticated } = useAuthStore();
@@ -28,23 +27,10 @@ function App() {
             isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />
           }
         />
+        {/* OAuth callback - Supabase redirects here after Google login */}
         <Route
-          path="/register"
-          element={
-            isAuthenticated ? <Navigate to="/" replace /> : <RegisterPage />
-          }
-        />
-        <Route
-          path="/forgot-password"
-          element={
-            isAuthenticated ? <Navigate to="/" replace /> : <ForgotPasswordPage />
-          }
-        />
-        <Route
-          path="/reset-password"
-          element={
-            isAuthenticated ? <Navigate to="/" replace /> : <ResetPasswordPage />
-          }
+          path="/auth/callback"
+          element={<AuthCallback />}
         />
 
         {/* Protected routes */}
@@ -85,6 +71,14 @@ function App() {
           element={
             <ProtectedRoute>
               <GroupsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute>
+              <AnalyticsPage />
             </ProtectedRoute>
           }
         />

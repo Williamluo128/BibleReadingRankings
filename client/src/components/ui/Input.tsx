@@ -22,7 +22,7 @@ export const Input: React.FC<InputProps> = ({
       {label && (
         <label
           htmlFor={inputId}
-          className="block text-sm font-medium text-gray-700 mb-2"
+          className="input-minimal-label"
         >
           {label}
         </label>
@@ -30,10 +30,10 @@ export const Input: React.FC<InputProps> = ({
       <input
         id={inputId}
         className={clsx(
-          'block w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm placeholder-gray-400',
-          'focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500',
-          'disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed',
-          error && 'border-red-300 focus:ring-red-500 focus:border-red-500',
+          'input-minimal',
+          'placeholder-gray-300',
+          'disabled:bg-transparent disabled:text-gray-400 disabled:cursor-not-allowed',
+          error && 'border-red-500 text-red-600 focus:border-red-600',
           className
         )}
         {...props}

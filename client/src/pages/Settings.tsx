@@ -1,97 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Navigation } from '@/components/Navigation';
 import { useAuthStore } from '@/stores/auth.store';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { api } from '@/services/api';
 
 export const SettingsPage: React.FC = () => {
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'profile' | 'password'>('profile');
-  
-  // 密码修改相关状态
-  const [passwordForm, setPasswordForm] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-  const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
-  const [isPasswordLoading, setIsPasswordLoading] = useState(false);
-  const [passwordSuccess, setPasswordSuccess] = useState(false);
-
-  // 处理密码修改
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPasswordErrors({});
-    setPasswordSuccess(false);
-    
-    // 表单验证
-    const errors: Record<string, string> = {};
-    
-    if (!passwordForm.currentPassword) {
-      errors.currentPassword = '请输入当前密码';
-    }
-    
-    if (!passwordForm.newPassword) {
-      errors.newPassword = '请输入新密码';
-    } else if (passwordForm.newPassword.length < 6) {
-      errors.newPassword = '新密码长度至少为6位';
-    }
-    
-    if (!passwordForm.confirmPassword) {
-      errors.confirmPassword = '请确认新密码';
-    } else if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      errors.confirmPassword = '两次输入的密码不一致';
-    }
-    
-    if (passwordForm.currentPassword === passwordForm.newPassword) {
-      errors.newPassword = '新密码不能与当前密码相同';
-    }
-    
-    if (Object.keys(errors).length > 0) {
-      setPasswordErrors(errors);
-      return;
-    }
-
-    setIsPasswordLoading(true);
-    
-    try {
-      await api.post('/auth/change-password', {
-        currentPassword: passwordForm.currentPassword,
-        newPassword: passwordForm.newPassword
-      });
-      
-      setPasswordSuccess(true);
-      setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: ''
-      });
-      
-      // 3秒后清除成功消息
-      setTimeout(() => setPasswordSuccess(false), 3000);
-      
-    } catch (error: any) {
-      setPasswordErrors({
-        general: error.response?.data?.error || '修改密码失败，请重试'
-      });
-    } finally {
-      setIsPasswordLoading(false);
-    }
-  };
-
-  const handlePasswordInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setPasswordForm(prev => ({ ...prev, [name]: value }));
-    
-    // 清除对应字段的错误
-    if (passwordErrors[name]) {
-      setPasswordErrors(prev => ({ ...prev, [name]: '' }));
-    }
-    if (passwordErrors.general) {
-      setPasswordErrors(prev => ({ ...prev, general: '' }));
-    }
-  };
 
   if (!user) {
     return (
@@ -107,189 +19,82 @@ export const SettingsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       <Navigation />
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">账户设置</h1>
-          
-          {/* 标签页导航 */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <div className="border-b border-gray-200">
-              <nav className="-mb-px flex">
-                <button
-                  onClick={() => setActiveTab('profile')}
-                  className={`py-4 px-6 text-sm font-medium border-b-2 ${
-                    activeTab === 'profile'
-                      ? 'border-primary-500 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  个人信息
-                </button>
-                <button
-                  onClick={() => setActiveTab('password')}
-                  className={`py-4 px-6 text-sm font-medium border-b-2 ${
-                    activeTab === 'password'
-                      ? 'border-primary-500 text-primary-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  修改密码
-                </button>
-              </nav>
+
+      <div className="max-w-3xl mx-auto py-12 px-8">
+        {/* Header - Minimalist */}
+        <div className="mb-12 border-b border-gray-100 pb-8">
+          <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">账户设置</h1>
+          <p className="text-gray-500 font-light">管理您的个人信息</p>
+        </div>
+
+        {/* Content */}
+        <div className="space-y-12">
+          <div className="grid grid-cols-1 gap-12">
+            <div className="border-b border-gray-100 pb-8">
+              <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2">用户名</label>
+              <div className="text-xl font-light text-gray-900 font-mono">
+                @{user.username}
+              </div>
             </div>
-            
-            <div className="p-6">
-              {activeTab === 'profile' && (
-                <div className="space-y-6">
-                  <h2 className="text-xl font-semibold text-gray-900">个人信息</h2>
-                  
-                  <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">用户名</label>
-                      <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                        {user.username}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">显示名称</label>
-                      <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                        {user.displayName}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">邮箱地址</label>
-                      <div className="mt-1 text-sm text-gray-900 bg-gray-50 px-3 py-2 rounded-md">
-                        {user.email}
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">用户角色</label>
-                      <div className="mt-1">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                          user.role === 'SUPER_ADMIN' 
-                            ? 'bg-purple-100 text-purple-800'
-                            : user.role === 'ADMIN'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
-                          {user.role === 'SUPER_ADMIN' ? '超级管理员' : user.role === 'ADMIN' ? '管理员' : '普通用户'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="pt-4">
-                    <p className="text-sm text-gray-500">
-                      如需修改个人信息，请联系管理员。
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {activeTab === 'password' && (
-                <div className="space-y-6">
-                  <h2 className="text-xl font-semibold text-gray-900">修改密码</h2>
-                  
-                  {passwordSuccess && (
-                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-                      密码修改成功！
-                    </div>
-                  )}
-                  
-                  {passwordErrors.general && (
-                    <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg">
-                      {passwordErrors.general}
-                    </div>
-                  )}
-                  
-                  <form onSubmit={handlePasswordSubmit} className="space-y-6">
-                    <div>
-                      <Input
-                        label="当前密码"
-                        name="currentPassword"
-                        type="password"
-                        autoComplete="current-password"
-                        required
-                        value={passwordForm.currentPassword}
-                        onChange={handlePasswordInputChange}
-                        error={passwordErrors.currentPassword}
-                        placeholder="请输入当前密码"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Input
-                        label="新密码"
-                        name="newPassword"
-                        type="password"
-                        autoComplete="new-password"
-                        required
-                        value={passwordForm.newPassword}
-                        onChange={handlePasswordInputChange}
-                        error={passwordErrors.newPassword}
-                        placeholder="请输入新密码（至少6位）"
-                      />
-                    </div>
-                    
-                    <div>
-                      <Input
-                        label="确认新密码"
-                        name="confirmPassword"
-                        type="password"
-                        autoComplete="new-password"
-                        required
-                        value={passwordForm.confirmPassword}
-                        onChange={handlePasswordInputChange}
-                        error={passwordErrors.confirmPassword}
-                        placeholder="请再次输入新密码"
-                      />
-                    </div>
-                    
-                    <div className="flex justify-end space-x-4">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => {
-                          setPasswordForm({
-                            currentPassword: '',
-                            newPassword: '',
-                            confirmPassword: ''
-                          });
-                          setPasswordErrors({});
-                          setPasswordSuccess(false);
-                        }}
-                      >
-                        取消
-                      </Button>
-                      
-                      <Button
-                        type="submit"
-                        isLoading={isPasswordLoading}
-                        disabled={!passwordForm.currentPassword || !passwordForm.newPassword || !passwordForm.confirmPassword}
-                      >
-                        修改密码
-                      </Button>
-                    </div>
-                  </form>
-                  
-                  <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-                    <h3 className="text-sm font-medium text-blue-900 mb-2">密码安全提示</h3>
-                    <ul className="text-sm text-blue-700 space-y-1">
-                      <li>• 密码长度至少6位</li>
-                      <li>• 建议使用大小写字母、数字和特殊字符的组合</li>
-                      <li>• 不要使用过于简单或常见的密码</li>
-                      <li>• 定期更换密码以保障账户安全</li>
-                    </ul>
-                  </div>
-                </div>
-              )}
+
+            <div className="border-b border-gray-100 pb-8">
+              <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2">显示名称</label>
+              <div className="text-xl font-light text-gray-900">
+                {user.displayName}
+              </div>
             </div>
+
+            <div className="border-b border-gray-100 pb-8">
+              <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2">邮箱地址</label>
+              <div className="text-xl font-light text-gray-900">
+                {user.email}
+              </div>
+            </div>
+
+            <div className="border-b border-gray-100 pb-8">
+              <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2">登录方式</label>
+              <div className="text-xl font-light text-gray-900 flex items-center space-x-2">
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path
+                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z"
+                    fill="#4285F4"
+                  />
+                  <path
+                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    fill="#34A853"
+                  />
+                  <path
+                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    fill="#FBBC05"
+                  />
+                  <path
+                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    fill="#EA4335"
+                  />
+                </svg>
+                <span>Google</span>
+              </div>
+            </div>
+
+            <div className="border-b border-gray-100 pb-8">
+              <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2">用户角色</label>
+              <div>
+                <span className={`text-xs uppercase tracking-wider px-2 py-1 ${user.role === 'SUPER_ADMIN'
+                    ? 'bg-purple-100 text-purple-800'
+                    : user.role === 'ADMIN'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                  {user.role === 'SUPER_ADMIN' ? '超级管理员' : user.role === 'ADMIN' ? '管理员' : '普通用户'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="text-sm text-gray-400 font-light italic">
+            如需修改个人信息，请联系管理员。
           </div>
         </div>
       </div>

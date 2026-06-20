@@ -78,7 +78,7 @@ export class ReadingController {
       const { date } = req.query;
 
       const records = await ReadingService.getUserReadingRecords(
-        userId, 
+        userId,
         date as string
       );
 
@@ -175,6 +175,80 @@ export class ReadingController {
       const response: ApiResponse = {
         success: false,
         error: 'Failed to check read status'
+      };
+
+      res.status(500).json(response);
+    }
+  }
+
+  // 获取阅读趋势数据（用于折线图）
+  static async getReadingTrends(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user!.id;
+      const days = req.query.days ? parseInt(req.query.days as string) : 30;
+
+      const trends = await ReadingService.getReadingTrends(userId, days);
+
+      const response: ApiResponse = {
+        success: true,
+        data: { trends },
+        message: 'Reading trends retrieved successfully'
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      const response: ApiResponse = {
+        success: false,
+        error: 'Failed to retrieve reading trends'
+      };
+
+      res.status(500).json(response);
+    }
+  }
+
+  // 获取阅读热力图数据
+  static async getReadingHeatmap(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user!.id;
+      const year = req.query.year ? parseInt(req.query.year as string) : new Date().getFullYear();
+
+      const heatmap = await ReadingService.getReadingHeatmap(userId, year);
+
+      const response: ApiResponse = {
+        success: true,
+        data: { heatmap },
+        message: 'Reading heatmap retrieved successfully'
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      const response: ApiResponse = {
+        success: false,
+        error: 'Failed to retrieve reading heatmap'
+      };
+
+      res.status(500).json(response);
+    }
+  }
+
+  // 获取阅读进度统计（旧约/新约比例等）
+  static async getProgressStats(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user!.id;
+
+      const progress = await ReadingService.getProgressStats(userId);
+
+      const response: ApiResponse = {
+        success: true,
+        data: progress,
+        message: 'Progress stats retrieved successfully'
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      const response: ApiResponse = {
+        success: false,
+        error: 'Failed to retrieve progress stats'
       };
 
       res.status(500).json(response);

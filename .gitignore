@@ -35,6 +35,7 @@ logs/
 # Database
 *.db
 *.sqlite
+*.db.backup.*
 
 # Prisma
 prisma/migrations/

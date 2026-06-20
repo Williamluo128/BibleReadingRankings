@@ -1,12 +1,6 @@
 import axios from 'axios';
-import type { 
-  ApiResponse, 
-  AuthResponse, 
-  CreateUserRequest, 
-  LoginRequest,
-  ForgotPasswordRequest,
-  ResetPasswordRequest
-} from '@bible-rankings/shared';
+import { supabase } from '@/lib/supabase';
+import type { ApiResponse, User } from '@bible-rankings/shared';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -17,22 +11,21 @@ export const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+// Request interceptor:从 Supabase session 取 access_token 注入
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
   }
   return config;
 });
 
-// Response interceptor to handle auth errors
+// Response interceptor:401 时登出并跳转
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token');
-      localStorage.removeItem('user');
+      supabase.auth.signOut();
       window.location.href = '/login';
     }
     return Promise.reject(error);
@@ -40,36 +33,15 @@ api.interceptors.response.use(
 );
 
 export class AuthAPI {
-  static async register(userData: CreateUserRequest): Promise<AuthResponse> {
-    const response = await api.post<ApiResponse<AuthResponse>>('/auth/register', userData);
-    return response.data.data!;
+  // GET /api/auth/me —— 返回本地用户(后端中间件会 upsert)
+  static async getCurrentUser(): Promise<User> {
+    const response = await api.get<ApiResponse<{ user: User }>>('/auth/me');
+    return response.data.data!.user;
   }
 
-  static async login(loginData: LoginRequest): Promise<AuthResponse> {
-    const response = await api.post<ApiResponse<AuthResponse>>('/auth/login', loginData);
-    return response.data.data!;
-  }
-
-  static async getCurrentUser(): Promise<AuthResponse> {
-    const response = await api.get<ApiResponse<AuthResponse>>('/auth/me');
-    return response.data.data!;
-  }
-
-  static async logout(): Promise<void> {
-    await api.post('/auth/logout');
-  }
-
-  static async forgotPassword(email: string): Promise<string> {
-    const response = await api.post<ApiResponse<{ resetToken: string }>>('/auth/forgot-password', { email });
-    return response.data.data!.resetToken;
-  }
-
-  static async resetPassword(token: string, newPassword: string): Promise<void> {
-    await api.post<ApiResponse<void>>('/auth/reset-password', { token, newPassword });
-  }
-
-  static async validateResetToken(token: string): Promise<boolean> {
-    const response = await api.get<ApiResponse<{ isValid: boolean }>>(`/auth/validate-reset-token/${token}`);
-    return response.data.data!.isValid;
+  // PATCH /api/auth/profile —— 更新 displayName / avatarUrl
+  static async updateProfile(data: { displayName?: string; avatarUrl?: string }): Promise<User> {
+    const response = await api.patch<ApiResponse<{ user: User }>>('/auth/profile', data);
+    return response.data.data!.user;
   }
 }
