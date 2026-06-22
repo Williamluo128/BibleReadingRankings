@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import jwksClient from 'jwks-rsa';
-import { createClient } from '@supabase/supabase-js';
 import { AuthService, SupabaseUserInfo } from '@/services/auth.service';
-import { env } from '@/config/env';
+import { env, ensureEnv } from '@/config/env';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import type { User } from '@bible-rankings/shared';
 
 declare global {
@@ -14,15 +14,14 @@ declare global {
   }
 }
 
-const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
-
-const jwks = jwksClient({
-  jwksUri: `${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
-  cache: true,
-  rateLimit: true,
-});
+function getJwks() {
+  ensureEnv();
+  return jwksClient({
+    jwksUri: `${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
+    cache: true,
+    rateLimit: true,
+  });
+}
 
 interface SupabaseJWTPayload {
   sub: string;
@@ -50,6 +49,7 @@ function extractUserInfo(data: SupabaseJWTPayload): SupabaseUserInfo {
 }
 
 function verifyWithSecret(token: string): Promise<SupabaseJWTPayload> {
+  ensureEnv();
   return new Promise((resolve, reject) => {
     jwt.verify(
       token,
@@ -70,6 +70,8 @@ function verifyWithSecret(token: string): Promise<SupabaseJWTPayload> {
 }
 
 function verifyWithJwks(token: string): Promise<SupabaseJWTPayload> {
+  ensureEnv();
+  const jwks = getJwks();
   return new Promise((resolve, reject) => {
     const decoded = jwt.decode(token, { complete: true });
     if (!decoded || typeof decoded === 'string' || !decoded.header.kid) {
@@ -114,7 +116,7 @@ async function verifySupabaseToken(token: string): Promise<SupabaseUserInfo> {
   const info = extractUserInfo(payload);
 
   if (!info.email) {
-    const { data, error } = await supabaseAdmin.auth.admin.getUserById(info.sub);
+    const { data, error } = await getSupabaseAdmin().auth.admin.getUserById(info.sub);
     if (!error && data.user?.email) {
       info.email = data.user.email;
       info.name = info.name || data.user.user_metadata?.full_name || data.user.user_metadata?.name || null;

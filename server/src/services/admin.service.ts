@@ -1,12 +1,6 @@
 import { prisma } from '@/config/database';
-import { createClient } from '@supabase/supabase-js';
-import { env } from '@/config/env';
+import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import type { User, UserRole } from '@bible-rankings/shared';
-
-// 后端管理员客户端(service_role key,可绕过 RLS,仅服务端使用)
-const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
 
 export interface UserListQuery {
   page?: number;
@@ -298,7 +292,7 @@ export class AdminService {
       throw new Error('用户不存在');
     }
 
-    const { error } = await supabaseAdmin.auth.admin.updateUserById(user.supabaseUid, {
+    const { error } = await getSupabaseAdmin().auth.admin.updateUserById(user.supabaseUid, {
       password: newPassword,
     });
     if (error) {

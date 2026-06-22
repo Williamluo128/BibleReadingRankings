@@ -7,7 +7,18 @@ import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 
 const app = express();
 
-ensureEnv();
+// 环境变量校验放在请求阶段,避免模块加载时崩溃导致 Vercel FUNCTION_INVOCATION_FAILED
+app.use((req, res, next) => {
+  try {
+    ensureEnv();
+    next();
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Server configuration error',
+    });
+  }
+});
 
 // Security middleware
 app.use(helmet());

@@ -1,4 +1,21 @@
-// Vercel serverless 入口:使用 esbuild 打包的单文件 handler(CommonJS)
-const app = require('./handler.cjs');
+let app;
 
-module.exports = app.default ?? app;
+try {
+  app = require('./handler.cjs');
+  app = app.default ?? app;
+} catch (error) {
+  console.error('[api] Failed to load handler:', error);
+
+  const express = require('express');
+  app = express();
+
+  app.use((req, res) => {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to start API server',
+      hint: 'Check Vercel environment variables and function logs',
+    });
+  });
+}
+
+module.exports = app;
