@@ -11,8 +11,13 @@ interface AuthState {
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
-  syncUserFromSession: (accessToken: string) => Promise<boolean>;
+  syncUserFromSession: (accessToken: string) => Promise<{ ok: boolean; authFailed: boolean }>;
   setUser: (user: User | null) => void;
+}
+
+function isAuthFailure(error: unknown): boolean {
+  const status = (error as { response?: { status?: number } })?.response?.status;
+  return status === 401 || status === 403;
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -20,7 +25,6 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
-      // 应用启动时默认"加载中",直到 checkAuth / onAuthStateChange 给出明确结论。
       isLoading: true,
 
       signInWithGoogle: async () => {
@@ -65,11 +69,11 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false,
           });
-          return true;
+          return { ok: true, authFailed: false };
         } catch (error) {
           console.error('Failed to sync user from session:', error);
           set({ isLoading: false });
-          return false;
+          return { ok: false, authFailed: isAuthFailure(error) };
         }
       },
 
@@ -85,8 +89,14 @@ export const useAuthStore = create<AuthState>()(
           return;
         }
 
-        const synced = await get().syncUserFromSession(session.access_token);
-        if (!synced) {
+        const { user, isAuthenticated } = get();
+        if (isAuthenticated && user) {
+          set({ isLoading: false });
+          return;
+        }
+
+        const result = await get().syncUserFromSession(session.access_token);
+        if (!result.ok && result.authFailed) {
           await supabase.auth.signOut();
           set({
             user: null,
@@ -97,7 +107,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       setUser: (user: User | null) => {
-        set({ user, isAuthenticated: !!user });
+        set({ user, isAuthenticated: !!user, isLoading: false });
       },
     }),
     {
@@ -107,7 +117,6 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
-        // 持久化恢复后仍需重新校验 Supabase session,避免过期 token 误判已登录
         if (state) {
           state.isLoading = true;
         }
@@ -116,10 +125,8 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-// 全局监听 Supabase auth 状态变化(session 建立/销毁)
 supabase.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_IN' && session) {
-    // 延迟到当前 auth 事件处理完成后再调 API,避免在回调内 getSession 死锁
     setTimeout(() => {
       void useAuthStore.getState().syncUserFromSession(session.access_token);
     }, 0);

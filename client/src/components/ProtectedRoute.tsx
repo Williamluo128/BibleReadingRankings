@@ -7,12 +7,15 @@ interface ProtectedRouteProps {
 }
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const { isAuthenticated, isLoading, user, checkAuth } = useAuthStore();
   const location = useLocation();
 
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    // 已从 OAuth 同步到 user 时,不必重复 checkAuth(避免刚登录又被踢回)
+    if (!isAuthenticated || !user) {
+      void checkAuth();
+    }
+  }, [checkAuth, isAuthenticated, user]);
 
   if (isLoading) {
     return (

@@ -38,9 +38,11 @@ export const AuthCallback: React.FC = () => {
         return;
       }
 
-      const synced = await useAuthStore.getState().syncUserFromSession(session.access_token);
-      if (synced) {
+      const result = await useAuthStore.getState().syncUserFromSession(session.access_token);
+      if (result.ok) {
         finish('/');
+      } else {
+        finish('/login');
       }
     }, 0);
 

@@ -56,6 +56,7 @@ function verifyWithSecret(token: string): Promise<SupabaseJWTPayload> {
       env.SUPABASE_JWT_SECRET,
       {
         issuer: `${env.SUPABASE_URL}/auth/v1`,
+        audience: 'authenticated',
         algorithms: ['HS256'],
       },
       (error, decoded) => {
@@ -90,6 +91,7 @@ function verifyWithJwks(token: string): Promise<SupabaseJWTPayload> {
         key.getPublicKey(),
         {
           issuer: `${env.SUPABASE_URL}/auth/v1`,
+          audience: 'authenticated',
           algorithms: ['RS256', 'ES256'],
         },
         (verifyError, payload) => {
@@ -105,6 +107,22 @@ function verifyWithJwks(token: string): Promise<SupabaseJWTPayload> {
 }
 
 async function verifySupabaseToken(token: string): Promise<SupabaseUserInfo> {
+  // 优先用 Supabase Admin API 验签(最可靠,兼容密钥轮换与 ES256/HS256)
+  const { data, error } = await getSupabaseAdmin().auth.getUser(token);
+  if (!error && data.user) {
+    const user = data.user;
+    return {
+      sub: user.id,
+      email: user.email || '',
+      name: user.user_metadata?.full_name || user.user_metadata?.name || null,
+      avatarUrl: user.user_metadata?.avatar_url || user.user_metadata?.picture || null,
+    };
+  }
+
+  if (error) {
+    console.warn('[auth] Supabase getUser failed, fallback to local JWT verify:', error.message);
+  }
+
   let payload: SupabaseJWTPayload;
 
   try {
@@ -116,11 +134,11 @@ async function verifySupabaseToken(token: string): Promise<SupabaseUserInfo> {
   const info = extractUserInfo(payload);
 
   if (!info.email) {
-    const { data, error } = await getSupabaseAdmin().auth.admin.getUserById(info.sub);
-    if (!error && data.user?.email) {
-      info.email = data.user.email;
-      info.name = info.name || data.user.user_metadata?.full_name || data.user.user_metadata?.name || null;
-      info.avatarUrl = info.avatarUrl || data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture || null;
+    const { data: userData, error: userError } = await getSupabaseAdmin().auth.admin.getUserById(info.sub);
+    if (!userError && userData.user?.email) {
+      info.email = userData.user.email;
+      info.name = info.name || userData.user.user_metadata?.full_name || userData.user.user_metadata?.name || null;
+      info.avatarUrl = info.avatarUrl || userData.user.user_metadata?.avatar_url || userData.user.user_metadata?.picture || null;
     }
   }
 
