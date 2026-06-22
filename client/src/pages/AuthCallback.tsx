@@ -1,11 +1,11 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '@/lib/supabase';
+import { supabase, waitForAccessToken } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth.store';
 
 /**
  * OAuth 回调落地页。
- * Supabase OAuth 完成后带着 hash fragment 跳回这里,SDK 自动提取 token 建立 session。
+ * Supabase PKCE 完成后带着 ?code= 跳回这里,SDK 异步交换 session。
  */
 export const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
@@ -30,27 +30,35 @@ export const AuthCallback: React.FC = () => {
       }
     });
 
-    // 等 Supabase 处理完 URL hash 后再同步用户,避免与 onAuthStateChange 竞争
-    const syncTimer = setTimeout(async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+    const completeLogin = async (accessToken: string) => {
+      const result = await useAuthStore.getState().syncUserFromSession(accessToken);
+      finish(result.ok ? '/' : '/login');
+    };
+
+    // 优先监听 SIGNED_IN(PKCE 交换完成后触发,此时 access_token 一定可用)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session?.access_token) {
+        void completeLogin(session.access_token);
+      }
+    });
+
+    // 兜底:轮询等待 access_token(防止 onAuthStateChange 已先触发)
+    void (async () => {
+      const token = await waitForAccessToken();
+      if (!token) {
         finish('/login');
         return;
       }
-
-      const result = await useAuthStore.getState().syncUserFromSession(session.access_token);
-      if (result.ok) {
-        finish('/');
-      } else {
-        finish('/login');
+      if (!useAuthStore.getState().isAuthenticated) {
+        await completeLogin(token);
       }
-    }, 0);
+    })();
 
-    const timeout = setTimeout(() => finish('/login'), 10000);
+    const timeout = setTimeout(() => finish('/login'), 15000);
 
     return () => {
       unsub();
-      clearTimeout(syncTimer);
+      subscription.unsubscribe();
       clearTimeout(timeout);
     };
   }, [navigate, isAuthenticated]);

@@ -11,15 +11,35 @@ export const api = axios.create({
   },
 });
 
+function hasAuthHeader(config: { headers?: unknown }): boolean {
+  const headers = config.headers as Record<string, string> | undefined;
+  if (!headers) return false;
+  return Boolean(headers.Authorization || headers.authorization);
+}
+
+function setAuthHeader(config: { headers?: unknown }, token: string): void {
+  const headers = (config.headers ?? {}) as Record<string, string>;
+  headers.Authorization = `Bearer ${token}`;
+  config.headers = headers;
+}
+
+async function resolveAccessToken(explicitToken?: string): Promise<string | null> {
+  const token = explicitToken?.trim();
+  if (token) return token;
+
+  const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
+
 // Request interceptor:从 Supabase session 取 access_token 注入
 api.interceptors.request.use(async (config) => {
-  // 已手动注入 token 时跳过(避免在 onAuthStateChange 回调链里再次 getSession 死锁)
-  if (config.headers.Authorization) {
+  if (hasAuthHeader(config)) {
     return config;
   }
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.access_token) {
-    config.headers.Authorization = `Bearer ${session.access_token}`;
+
+  const token = await resolveAccessToken();
+  if (token) {
+    setAuthHeader(config, token);
   }
   return config;
 });
@@ -39,12 +59,14 @@ api.interceptors.response.use(
 export class AuthAPI {
   // GET /api/auth/me —— 返回本地用户(后端中间件会 upsert)
   static async getCurrentUser(accessToken?: string): Promise<User> {
-    const response = await api.get<ApiResponse<{ user: User }>>(
-      '/auth/me',
-      accessToken
-        ? { headers: { Authorization: `Bearer ${accessToken}` } }
-        : undefined,
-    );
+    const token = await resolveAccessToken(accessToken);
+    if (!token) {
+      throw new Error('No access token available');
+    }
+
+    const response = await api.get<ApiResponse<{ user: User }>>('/auth/me', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
     return response.data.data!.user;
   }
 

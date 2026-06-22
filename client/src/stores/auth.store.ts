@@ -61,9 +61,15 @@ export const useAuthStore = create<AuthState>()(
       },
 
       syncUserFromSession: async (accessToken: string) => {
+        const token = accessToken?.trim();
+        if (!token) {
+          console.error('Failed to sync user from session: missing access token');
+          return { ok: false, authFailed: false };
+        }
+
         set({ isLoading: true });
         try {
-          const user = await AuthAPI.getCurrentUser(accessToken);
+          const user = await AuthAPI.getCurrentUser(token);
           set({
             user,
             isAuthenticated: true,
@@ -80,7 +86,7 @@ export const useAuthStore = create<AuthState>()(
       checkAuth: async () => {
         const { data: { session } } = await supabase.auth.getSession();
 
-        if (!session) {
+        if (!session?.access_token) {
           set({
             user: null,
             isAuthenticated: false,
@@ -126,7 +132,7 @@ export const useAuthStore = create<AuthState>()(
 );
 
 supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_IN' && session) {
+  if (event === 'SIGNED_IN' && session?.access_token) {
     setTimeout(() => {
       void useAuthStore.getState().syncUserFromSession(session.access_token);
     }, 0);

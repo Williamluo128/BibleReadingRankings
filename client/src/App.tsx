@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { LoginPage } from '@/pages/Login';
@@ -14,12 +14,17 @@ import { AdminPage } from '@/pages/Admin';
 import { GroupManagementPage } from '@/pages/GroupManagement';
 import { AnalyticsPage } from '@/pages/Analytics';
 
-function App() {
+function AppRoutes() {
   const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const location = useLocation();
+  const isAuthCallback = location.pathname === '/auth/callback';
 
   useEffect(() => {
-    void checkAuth();
-  }, [checkAuth]);
+    // OAuth 回调页自行处理 session,避免 PKCE 未完成时过早调用 /auth/me
+    if (!isAuthCallback) {
+      void checkAuth();
+    }
+  }, [checkAuth, isAuthCallback]);
 
   const loginElement = isLoading ? (
     <div className="min-h-screen flex items-center justify-center">
@@ -32,8 +37,7 @@ function App() {
   );
 
   return (
-    <Router>
-      <Routes>
+    <Routes>
         {/* Public routes - redirect to home if already authenticated */}
         <Route
           path="/login"
@@ -122,6 +126,13 @@ function App() {
         {/* Catch all route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <AppRoutes />
     </Router>
   );
 }
