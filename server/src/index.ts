@@ -1,11 +1,13 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import { env } from './config/env';
+import { env, ensureEnv } from './config/env';
 import { apiRoutes } from './routes';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
 
 const app = express();
+
+ensureEnv();
 
 // Security middleware
 app.use(helmet());

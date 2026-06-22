@@ -1,10 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
+import jwksClient from 'jwks-rsa';
 import { createClient } from '@supabase/supabase-js';
 import { AuthService, SupabaseUserInfo } from '@/services/auth.service';
 import { env } from '@/config/env';
 import type { User } from '@bible-rankings/shared';
 
-// Extend Express Request interface to include user
 declare global {
   namespace Express {
     interface Request {
@@ -13,35 +14,14 @@ declare global {
   }
 }
 
-// jose 是纯 ESM 包;在 Vercel CommonJS 环境必须用 dynamic import,不能用 require()
-type JoseModule = typeof import('jose');
-type RemoteJWKSet = ReturnType<JoseModule['createRemoteJWKSet']>;
-
-let joseModule: JoseModule | null = null;
-let jwks: RemoteJWKSet | null = null;
-
-async function getJose(): Promise<JoseModule> {
-  if (!joseModule) {
-    // 避免 tsc 把 import() 编译成 require();Vercel CommonJS 需要真正的 dynamic import
-    const dynamicImport = new Function(
-      'specifier',
-      'return import(specifier)',
-    ) as (specifier: string) => Promise<JoseModule>;
-    joseModule = await dynamicImport('jose');
-  }
-  return joseModule;
-}
-
-async function getJWKS(): Promise<RemoteJWKSet> {
-  if (!jwks) {
-    const { createRemoteJWKSet } = await getJose();
-    jwks = createRemoteJWKSet(new URL(`${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`));
-  }
-  return jwks;
-}
-
 const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
+});
+
+const jwks = jwksClient({
+  jwksUri: `${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`,
+  cache: true,
+  rateLimit: true,
 });
 
 interface SupabaseJWTPayload {
@@ -69,30 +49,70 @@ function extractUserInfo(data: SupabaseJWTPayload): SupabaseUserInfo {
   };
 }
 
-/**
- * 验证 Supabase 签发的 access token,返回其中的用户身份信息。
- * 优先 JWKS(ES256/RS256),失败时回退到 JWT secret(HS256)。
- */
+function verifyWithSecret(token: string): Promise<SupabaseJWTPayload> {
+  return new Promise((resolve, reject) => {
+    jwt.verify(
+      token,
+      env.SUPABASE_JWT_SECRET,
+      {
+        issuer: `${env.SUPABASE_URL}/auth/v1`,
+        algorithms: ['HS256'],
+      },
+      (error, decoded) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve(decoded as SupabaseJWTPayload);
+      },
+    );
+  });
+}
+
+function verifyWithJwks(token: string): Promise<SupabaseJWTPayload> {
+  return new Promise((resolve, reject) => {
+    const decoded = jwt.decode(token, { complete: true });
+    if (!decoded || typeof decoded === 'string' || !decoded.header.kid) {
+      reject(new Error('Invalid token header'));
+      return;
+    }
+
+    jwks.getSigningKey(decoded.header.kid, (error, key) => {
+      if (error || !key) {
+        reject(error ?? new Error('Signing key not found'));
+        return;
+      }
+
+      jwt.verify(
+        token,
+        key.getPublicKey(),
+        {
+          issuer: `${env.SUPABASE_URL}/auth/v1`,
+          algorithms: ['RS256', 'ES256'],
+        },
+        (verifyError, payload) => {
+          if (verifyError) {
+            reject(verifyError);
+            return;
+          }
+          resolve(payload as SupabaseJWTPayload);
+        },
+      );
+    });
+  });
+}
+
 async function verifySupabaseToken(token: string): Promise<SupabaseUserInfo> {
-  const { jwtVerify } = await getJose();
   let payload: SupabaseJWTPayload;
 
   try {
-    ({ payload } = await jwtVerify(token, await getJWKS(), {
-      issuer: `${env.SUPABASE_URL}/auth/v1`,
-      algorithms: ['RS256', 'ES256'],
-    }));
+    payload = await verifyWithJwks(token);
   } catch {
-    const secret = new TextEncoder().encode(env.SUPABASE_JWT_SECRET);
-    ({ payload } = await jwtVerify(token, secret, {
-      issuer: `${env.SUPABASE_URL}/auth/v1`,
-      algorithms: ['HS256'],
-    }));
+    payload = await verifyWithSecret(token);
   }
 
-  const info = extractUserInfo(payload as SupabaseJWTPayload);
+  const info = extractUserInfo(payload);
 
-  // JWT 里可能没有 email,从 Supabase Admin API 补全
   if (!info.email) {
     const { data, error } = await supabaseAdmin.auth.admin.getUserById(info.sub);
     if (!error && data.user?.email) {
@@ -116,20 +136,18 @@ export const authenticateToken = async (
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    const token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
       res.status(401).json({
         success: false,
-        error: 'Access token is required'
+        error: 'Access token is required',
       });
       return;
     }
 
-    // 1) 用 Supabase 公钥验签
     const info = await verifySupabaseToken(token);
 
-    // 2) 在本地 users 表 upsert,保持 req.user 的 shape 不变
     let user: User;
     try {
       user = await AuthService.upsertUserFromSupabase(info);
@@ -142,22 +160,13 @@ export const authenticateToken = async (
       return;
     }
 
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        error: 'User not found'
-      });
-      return;
-    }
-
-    // 3) 注入 req.user(与改造前 shape 完全一致,40+ 处消费点零改动)
     req.user = user;
     next();
   } catch (error) {
     console.error('[auth] token 验证失败:', error instanceof Error ? `${error.name}: ${error.message}` : error);
     res.status(403).json({
       success: false,
-      error: 'Invalid token'
+      error: 'Invalid token',
     });
   }
 };
@@ -180,8 +189,7 @@ export const optionalAuth = async (
     }
 
     next();
-  } catch (error) {
-    // Ignore errors for optional auth
+  } catch {
     next();
   }
 };
@@ -191,7 +199,7 @@ export const requireRole = (allowedRoles: string[]) => {
     if (!req.user) {
       res.status(401).json({
         success: false,
-        error: 'Authentication required'
+        error: 'Authentication required',
       });
       return;
     }
@@ -199,7 +207,7 @@ export const requireRole = (allowedRoles: string[]) => {
     if (!allowedRoles.includes(req.user.role)) {
       res.status(403).json({
         success: false,
-        error: 'Insufficient permissions'
+        error: 'Insufficient permissions',
       });
       return;
     }

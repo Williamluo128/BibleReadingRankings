@@ -1,12 +1,12 @@
 {
-  "buildCommand": "npm run build:shared && npm run build:server && npm run build:client",
+  "buildCommand": "npm run build",
   "outputDirectory": "client/dist",
   "framework": null,
   "installCommand": "npm install",
   "functions": {
-    "api/index.ts": {
+    "api/index.js": {
       "maxDuration": 30,
-      "includeFiles": "server/dist/**,server/prisma/**,server/node_modules/.prisma/**,node_modules/.prisma/**"
+      "includeFiles": "api/handler.cjs,server/prisma/schema.prisma,node_modules/.prisma/**,node_modules/@prisma/**"
     }
   },
   "rewrites": [

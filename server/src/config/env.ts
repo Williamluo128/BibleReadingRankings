@@ -35,10 +35,20 @@ export const env = {
     .filter(Boolean),
 };
 
-// Validate required environment variables
 const requiredEnvVars = ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_JWT_SECRET'];
-const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
-if (missingEnvVars.length > 0) {
-  throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+// 延迟校验,避免模块加载阶段直接崩溃导致 Vercel 只返回 FUNCTION_INVOCATION_FAILED
+let envValidated = false;
+
+export function ensureEnv(): void {
+  if (envValidated) {
+    return;
+  }
+
+  const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+  if (missingEnvVars.length > 0) {
+    throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
+  }
+
+  envValidated = true;
 }
