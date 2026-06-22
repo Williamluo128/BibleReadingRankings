@@ -11,6 +11,7 @@ interface ReadingState {
     totalVerses: number;
     totalDays: number;
     todayVerses: number;
+    currentStreak: number;
   } | null;
   
   // UI状态
@@ -78,7 +79,7 @@ export const useReadingStore = create<ReadingState>((set, get) => ({
       }
       
       // 调用API批量记录阅读
-      const result = await ReadingAPI.recordMultipleVerses(unreadVerses);
+      await ReadingAPI.recordMultipleVerses(unreadVerses);
       
       // 更新本地状态
       const updatedReadVerses = new Set(currentReadVerses);
@@ -91,8 +92,6 @@ export const useReadingStore = create<ReadingState>((set, get) => ({
       
       // 刷新统计数据
       get().loadTotalStats();
-      
-      return result;
     } catch (error) {
       set({ 
         error: error instanceof Error ? error.message : '批量保存阅读记录失败',

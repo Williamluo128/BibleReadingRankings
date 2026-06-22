@@ -93,47 +93,6 @@ export const authenticateToken = async (
   }
 };
 
-export const authenticateToken = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-
-    if (!token) {
-      res.status(401).json({
-        success: false,
-        error: 'Access token is required'
-      });
-      return;
-    }
-
-    // 1) 用 Supabase 公钥验签
-    const info = await verifySupabaseToken(token);
-
-    // 2) 在本地 users 表 upsert,保持 req.user 的 shape 不变
-    const user = await AuthService.upsertUserFromSupabase(info);
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        error: 'User not found'
-      });
-      return;
-    }
-
-    // 3) 注入 req.user(与改造前 shape 完全一致,40+ 处消费点零改动)
-    req.user = user;
-    next();
-  } catch (error) {
-    res.status(403).json({
-      success: false,
-      error: 'Invalid token'
-    });
-  }
-};
-
 export const optionalAuth = async (
   req: Request,
   res: Response,

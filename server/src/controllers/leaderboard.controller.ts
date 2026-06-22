@@ -1,9 +1,8 @@
 import { Request, Response } from 'express';
 import { LeaderboardService } from '../services/leaderboard.service';
-import { ValidatedRequest } from '../types/auth';
 
 export class LeaderboardController {
-  static async getLeaderboard(req: ValidatedRequest, res: Response): Promise<void> {
+  static async getLeaderboard(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user!.id;
       const period = req.query.period as string || 'weekly'; // daily, weekly, monthly, all-time
@@ -36,7 +35,7 @@ export class LeaderboardController {
     }
   }
 
-  static async getFriendsLeaderboard(req: ValidatedRequest, res: Response): Promise<void> {
+  static async getFriendsLeaderboard(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user!.id;
       const period = req.query.period as string || 'weekly';
@@ -68,7 +67,7 @@ export class LeaderboardController {
     }
   }
 
-  static async getUserRank(req: ValidatedRequest, res: Response): Promise<void> {
+  static async getUserRank(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user!.id;
       const period = req.query.period as string || 'weekly';
