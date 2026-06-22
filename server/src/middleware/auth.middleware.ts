@@ -1,5 +1,4 @@
 import { Request, Response, NextFunction } from 'express';
-import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { createClient } from '@supabase/supabase-js';
 import { AuthService, SupabaseUserInfo } from '@/services/auth.service';
 import { env } from '@/config/env';
@@ -14,8 +13,33 @@ declare global {
   }
 }
 
-// Supabase 的 JWKS 端点,用于用公钥验签 access token
-const JWKS = createRemoteJWKSet(new URL(`${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`));
+// jose 是纯 ESM 包;在 Vercel CommonJS 环境必须用 dynamic import,不能用 require()
+type JoseModule = typeof import('jose');
+type RemoteJWKSet = ReturnType<JoseModule['createRemoteJWKSet']>;
+
+let joseModule: JoseModule | null = null;
+let jwks: RemoteJWKSet | null = null;
+
+async function getJose(): Promise<JoseModule> {
+  if (!joseModule) {
+    // 避免 tsc 把 import() 编译成 require();Vercel CommonJS 需要真正的 dynamic import
+    const dynamicImport = new Function(
+      'specifier',
+      'return import(specifier)',
+    ) as (specifier: string) => Promise<JoseModule>;
+    joseModule = await dynamicImport('jose');
+  }
+  return joseModule;
+}
+
+async function getJWKS(): Promise<RemoteJWKSet> {
+  if (!jwks) {
+    const { createRemoteJWKSet } = await getJose();
+    jwks = createRemoteJWKSet(new URL(`${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`));
+  }
+  return jwks;
+}
+
 const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
@@ -50,10 +74,11 @@ function extractUserInfo(data: SupabaseJWTPayload): SupabaseUserInfo {
  * 优先 JWKS(ES256/RS256),失败时回退到 JWT secret(HS256)。
  */
 async function verifySupabaseToken(token: string): Promise<SupabaseUserInfo> {
+  const { jwtVerify } = await getJose();
   let payload: SupabaseJWTPayload;
 
   try {
-    ({ payload } = await jwtVerify(token, JWKS, {
+    ({ payload } = await jwtVerify(token, await getJWKS(), {
       issuer: `${env.SUPABASE_URL}/auth/v1`,
       algorithms: ['RS256', 'ES256'],
     }));
@@ -129,7 +154,6 @@ export const authenticateToken = async (
     req.user = user;
     next();
   } catch (error) {
-    // 打印完整错误便于排查(jose 的错误码很有用,如 ERR_JWT_CLAIM_INVALID)
     console.error('[auth] token 验证失败:', error instanceof Error ? `${error.name}: ${error.message}` : error);
     res.status(403).json({
       success: false,
