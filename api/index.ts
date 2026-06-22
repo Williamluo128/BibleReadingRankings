@@ -1,5 +1,4 @@
-import app from '../server/src/index';
+import app from '../server/dist/index';
 
-// Vercel serverless 入口:@vercel/node 会把 export default 的 Express app
-// 自动适配为 serverless function 的请求 handler。
+// Vercel serverless 入口:使用已编译的 Express app(路径别名已在 build 时解析)
 export default app;
