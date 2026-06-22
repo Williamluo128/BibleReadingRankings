@@ -34,7 +34,7 @@ interface SupabaseJWTPayload {
 async function verifySupabaseToken(token: string): Promise<SupabaseUserInfo> {
   const { payload } = await jwtVerify(token, JWKS, {
     issuer: `${env.SUPABASE_URL}/auth/v1`,
-    algorithms: ['ES256', 'RS256'],
+    algorithms: ['RS256', 'ES256'],
   });
 
   const data = payload as SupabaseJWTPayload;
@@ -49,6 +49,49 @@ async function verifySupabaseToken(token: string): Promise<SupabaseUserInfo> {
     avatarUrl: data.user_metadata?.avatar_url || data.user_metadata?.picture || null,
   };
 }
+
+export const authenticateToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+    if (!token) {
+      res.status(401).json({
+        success: false,
+        error: 'Access token is required'
+      });
+      return;
+    }
+
+    // 1) 用 Supabase 公钥验签
+    const info = await verifySupabaseToken(token);
+
+    // 2) 在本地 users 表 upsert,保持 req.user 的 shape 不变
+    const user = await AuthService.upsertUserFromSupabase(info);
+    if (!user) {
+      res.status(401).json({
+        success: false,
+        error: 'User not found'
+      });
+      return;
+    }
+
+    // 3) 注入 req.user(与改造前 shape 完全一致,40+ 处消费点零改动)
+    req.user = user;
+    next();
+  } catch (error) {
+    // 打印完整错误便于排查(jose 的错误码很有用,如 ERR_JWT_CLAIM_INVALID)
+    console.error('[auth] token 验证失败:', error instanceof Error ? `${error.name}: ${error.message}` : error);
+    res.status(403).json({
+      success: false,
+      error: 'Invalid token'
+    });
+  }
+};
 
 export const authenticateToken = async (
   req: Request,

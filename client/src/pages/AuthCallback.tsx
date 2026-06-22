@@ -1,39 +1,53 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/stores/auth.store';
 
 /**
  * OAuth 回调落地页。
- * Supabase OAuth 完成后会带着 hash fragment (#access_token=...) 跳回这里。
- * Supabase JS SDK 会自动提取 token 并建立 session,
- * auth.store.ts 的 onAuthStateChange('SIGNED_IN') 会处理后续同步。
- * 此页面只需等待 session 建立,然后跳转首页。
+ * Supabase OAuth 完成后带着 hash fragment 跳回这里,SDK 自动提取 token 建立 session。
+ * 我们等待"本地用户已同步到 store"后再跳转首页,避免 ProtectedRoute 误判。
  */
 export const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
+  const user = useAuthStore(s => s.user);
 
   useEffect(() => {
-    // Supabase SDK 会自动从 URL hash 提取 token 并触发 onAuthStateChange
-    // 我们只需监听一次 session 变化,拿到 session 后跳转
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session) {
-        // session 建立成功,onAuthStateChange 在 auth.store 里会调 /auth/me 同步用户
-        // 给一点延迟让 store 完成用户同步
-        setTimeout(() => navigate('/', { replace: true }), 500);
-      } else if (event === 'TOKEN_REFRESHED' && session) {
+    // 情况1:store 里已有 user(可能 onAuthStateChange 已先一步同步完)→ 直接跳
+    if (user) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    // 情况2:监听 store 变化,等 onAuthStateChange 同步完 user 后跳
+    let done = false;
+    const unsub = useAuthStore.subscribe(s => {
+      if (s.user && !done) {
+        done = true;
         navigate('/', { replace: true });
       }
     });
 
-    // 检查当前是否已有 session(可能 SDK 已经提取了)
+    // 兜底:如果 SDK 已经提取了 session,主动触发一次 checkAuth(它会调 /auth/me 同步)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
-        setTimeout(() => navigate('/', { replace: true }), 500);
+        useAuthStore.getState().checkAuth();
       }
     });
 
-    return () => subscription.unsubscribe();
-  }, [navigate]);
+    // 超时保护:8 秒还没成功,跳回登录页避免卡死
+    const timer = setTimeout(() => {
+      if (!done) {
+        done = true;
+        navigate('/login', { replace: true });
+      }
+    }, 8000);
+
+    return () => {
+      unsub();
+      clearTimeout(timer);
+    };
+  }, [navigate, user]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">

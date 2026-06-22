@@ -19,7 +19,10 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       user: null,
       isAuthenticated: false,
-      isLoading: false,
+      // 应用启动时默认"加载中",直到 checkAuth / onAuthStateChange 给出明确结论。
+      // 否则 ProtectedRoute 首次渲染时 isLoading=false 且 isAuthenticated=false,
+      // 会在 checkAuth 返回前就把用户误判为未登录,踢回 /login。
+      isLoading: true,
 
       signInWithGoogle: async () => {
         set({ isLoading: true });
