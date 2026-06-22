@@ -6,48 +6,52 @@ import { useAuthStore } from '@/stores/auth.store';
 /**
  * OAuth 回调落地页。
  * Supabase OAuth 完成后带着 hash fragment 跳回这里,SDK 自动提取 token 建立 session。
- * 我们等待"本地用户已同步到 store"后再跳转首页,避免 ProtectedRoute 误判。
  */
 export const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
-  const user = useAuthStore(s => s.user);
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
 
   useEffect(() => {
-    // 情况1:store 里已有 user(可能 onAuthStateChange 已先一步同步完)→ 直接跳
-    if (user) {
+    if (isAuthenticated) {
       navigate('/', { replace: true });
       return;
     }
 
-    // 情况2:监听 store 变化,等 onAuthStateChange 同步完 user 后跳
     let done = false;
+    const finish = (path: '/' | '/login') => {
+      if (done) return;
+      done = true;
+      navigate(path, { replace: true });
+    };
+
     const unsub = useAuthStore.subscribe(s => {
-      if (s.user && !done) {
-        done = true;
-        navigate('/', { replace: true });
+      if (s.isAuthenticated) {
+        finish('/');
       }
     });
 
-    // 兜底:如果 SDK 已经提取了 session,主动触发一次 checkAuth(它会调 /auth/me 同步)
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) {
-        useAuthStore.getState().checkAuth();
+    // 等 Supabase 处理完 URL hash 后再同步用户,避免与 onAuthStateChange 竞争
+    const syncTimer = setTimeout(async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        finish('/login');
+        return;
       }
-    });
 
-    // 超时保护:8 秒还没成功,跳回登录页避免卡死
-    const timer = setTimeout(() => {
-      if (!done) {
-        done = true;
-        navigate('/login', { replace: true });
+      const synced = await useAuthStore.getState().syncUserFromSession(session.access_token);
+      if (synced) {
+        finish('/');
       }
-    }, 8000);
+    }, 0);
+
+    const timeout = setTimeout(() => finish('/login'), 10000);
 
     return () => {
       unsub();
-      clearTimeout(timer);
+      clearTimeout(syncTimer);
+      clearTimeout(timeout);
     };
-  }, [navigate, user]);
+  }, [navigate, isAuthenticated]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">

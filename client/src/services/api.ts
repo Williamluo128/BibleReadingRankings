@@ -13,6 +13,10 @@ export const api = axios.create({
 
 // Request interceptor:从 Supabase session 取 access_token 注入
 api.interceptors.request.use(async (config) => {
+  // 已手动注入 token 时跳过(避免在 onAuthStateChange 回调链里再次 getSession 死锁)
+  if (config.headers.Authorization) {
+    return config;
+  }
   const { data: { session } } = await supabase.auth.getSession();
   if (session?.access_token) {
     config.headers.Authorization = `Bearer ${session.access_token}`;
@@ -34,8 +38,13 @@ api.interceptors.response.use(
 
 export class AuthAPI {
   // GET /api/auth/me —— 返回本地用户(后端中间件会 upsert)
-  static async getCurrentUser(): Promise<User> {
-    const response = await api.get<ApiResponse<{ user: User }>>('/auth/me');
+  static async getCurrentUser(accessToken?: string): Promise<User> {
+    const response = await api.get<ApiResponse<{ user: User }>>(
+      '/auth/me',
+      accessToken
+        ? { headers: { Authorization: `Bearer ${accessToken}` } }
+        : undefined,
+    );
     return response.data.data!.user;
   }
 

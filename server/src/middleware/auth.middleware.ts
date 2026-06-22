@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { jwtVerify, createRemoteJWKSet } from 'jose';
+import { createClient } from '@supabase/supabase-js';
 import { AuthService, SupabaseUserInfo } from '@/services/auth.service';
 import { env } from '@/config/env';
 import type { User } from '@bible-rankings/shared';
@@ -15,11 +16,15 @@ declare global {
 
 // Supabase 的 JWKS 端点,用于用公钥验签 access token
 const JWKS = createRemoteJWKSet(new URL(`${env.SUPABASE_URL}/auth/v1/.well-known/jwks.json`));
+const supabaseAdmin = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
 
 interface SupabaseJWTPayload {
   sub: string;
   email?: string;
   user_metadata?: {
+    email?: string;
     full_name?: string;
     name?: string;
     avatar_url?: string;
@@ -27,27 +32,56 @@ interface SupabaseJWTPayload {
   };
 }
 
-/**
- * 验证 Supabase 签发的 access token,返回其中的用户身份信息。
- * 使用 Supabase 的 JWKS 公钥(而非 JWT secret)验签,更安全且支持密钥轮换。
- */
-async function verifySupabaseToken(token: string): Promise<SupabaseUserInfo> {
-  const { payload } = await jwtVerify(token, JWKS, {
-    issuer: `${env.SUPABASE_URL}/auth/v1`,
-    algorithms: ['RS256', 'ES256'],
-  });
-
-  const data = payload as SupabaseJWTPayload;
+function extractUserInfo(data: SupabaseJWTPayload): SupabaseUserInfo {
   if (!data.sub) {
     throw new Error('Token missing sub');
   }
 
   return {
     sub: data.sub,
-    email: data.email || '',
+    email: data.email || data.user_metadata?.email || '',
     name: data.user_metadata?.full_name || data.user_metadata?.name || null,
     avatarUrl: data.user_metadata?.avatar_url || data.user_metadata?.picture || null,
   };
+}
+
+/**
+ * 验证 Supabase 签发的 access token,返回其中的用户身份信息。
+ * 优先 JWKS(ES256/RS256),失败时回退到 JWT secret(HS256)。
+ */
+async function verifySupabaseToken(token: string): Promise<SupabaseUserInfo> {
+  let payload: SupabaseJWTPayload;
+
+  try {
+    ({ payload } = await jwtVerify(token, JWKS, {
+      issuer: `${env.SUPABASE_URL}/auth/v1`,
+      algorithms: ['RS256', 'ES256'],
+    }));
+  } catch {
+    const secret = new TextEncoder().encode(env.SUPABASE_JWT_SECRET);
+    ({ payload } = await jwtVerify(token, secret, {
+      issuer: `${env.SUPABASE_URL}/auth/v1`,
+      algorithms: ['HS256'],
+    }));
+  }
+
+  const info = extractUserInfo(payload as SupabaseJWTPayload);
+
+  // JWT 里可能没有 email,从 Supabase Admin API 补全
+  if (!info.email) {
+    const { data, error } = await supabaseAdmin.auth.admin.getUserById(info.sub);
+    if (!error && data.user?.email) {
+      info.email = data.user.email;
+      info.name = info.name || data.user.user_metadata?.full_name || data.user.user_metadata?.name || null;
+      info.avatarUrl = info.avatarUrl || data.user.user_metadata?.avatar_url || data.user.user_metadata?.picture || null;
+    }
+  }
+
+  if (!info.email) {
+    throw new Error('Token missing email');
+  }
+
+  return info;
 }
 
 export const authenticateToken = async (
@@ -71,7 +105,18 @@ export const authenticateToken = async (
     const info = await verifySupabaseToken(token);
 
     // 2) 在本地 users 表 upsert,保持 req.user 的 shape 不变
-    const user = await AuthService.upsertUserFromSupabase(info);
+    let user: User;
+    try {
+      user = await AuthService.upsertUserFromSupabase(info);
+    } catch (dbError) {
+      console.error('[auth] 用户同步失败:', dbError);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to sync user profile',
+      });
+      return;
+    }
+
     if (!user) {
       res.status(401).json({
         success: false,

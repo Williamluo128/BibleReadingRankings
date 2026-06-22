@@ -2,6 +2,23 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+function buildCorsOrigins(): string[] {
+  const origins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
+    .split(',')
+    .map(s => s.trim().replace(/^"|"$/g, ''))
+    .filter(Boolean);
+
+  // Vercel 自动注入的部署域名
+  for (const key of ['VERCEL_URL', 'VERCEL_BRANCH_URL'] as const) {
+    const host = process.env[key];
+    if (host) {
+      origins.push(`https://${host}`);
+    }
+  }
+
+  return [...new Set(origins)];
+}
+
 export const env = {
   PORT: process.env.PORT || 3001,
   NODE_ENV: process.env.NODE_ENV || 'development',
@@ -10,7 +27,7 @@ export const env = {
   SUPABASE_URL: process.env.SUPABASE_URL!,
   SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
   SUPABASE_JWT_SECRET: process.env.SUPABASE_JWT_SECRET!,
-  CORS_ORIGIN: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  CORS_ORIGIN: buildCorsOrigins(),
   // 首次用 Google 登录时,邮箱命中此列表的用户自动赋予 SUPER_ADMIN 角色
   ADMIN_EMAILS: (process.env.ADMIN_EMAILS || '')
     .split(',')

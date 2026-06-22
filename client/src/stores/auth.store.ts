@@ -11,17 +11,16 @@ interface AuthState {
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
+  syncUserFromSession: (accessToken: string) => Promise<boolean>;
   setUser: (user: User | null) => void;
 }
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    (set, get) => ({
       user: null,
       isAuthenticated: false,
       // 应用启动时默认"加载中",直到 checkAuth / onAuthStateChange 给出明确结论。
-      // 否则 ProtectedRoute 首次渲染时 isLoading=false 且 isAuthenticated=false,
-      // 会在 checkAuth 返回前就把用户误判为未登录,踢回 /login。
       isLoading: true,
 
       signInWithGoogle: async () => {
@@ -37,7 +36,6 @@ export const useAuthStore = create<AuthState>()(
             set({ isLoading: false });
             throw error;
           }
-          // 浏览器会跳转到 Google,不需要在这里设 isAuthenticated
         } catch (error) {
           set({ isLoading: false });
           throw error;
@@ -58,26 +56,37 @@ export const useAuthStore = create<AuthState>()(
         }
       },
 
-      checkAuth: async () => {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        if (!session) {
-          set({ isAuthenticated: false, isLoading: false });
-          return;
-        }
-
+      syncUserFromSession: async (accessToken: string) => {
         set({ isLoading: true });
         try {
-          // 调后端 /auth/me → 触发 upsert + 获取本地用户
-          const user = await AuthAPI.getCurrentUser();
+          const user = await AuthAPI.getCurrentUser(accessToken);
           set({
             user,
             isAuthenticated: true,
             isLoading: false,
           });
+          return true;
         } catch (error) {
-          console.error('Auth check failed:', error);
-          // session 无效则登出
+          console.error('Failed to sync user from session:', error);
+          set({ isLoading: false });
+          return false;
+        }
+      },
+
+      checkAuth: async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+
+        if (!session) {
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+          return;
+        }
+
+        const synced = await get().syncUserFromSession(session.access_token);
+        if (!synced) {
           await supabase.auth.signOut();
           set({
             user: null,
@@ -97,23 +106,23 @@ export const useAuthStore = create<AuthState>()(
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => (state) => {
+        // 持久化恢复后仍需重新校验 Supabase session,避免过期 token 误判已登录
+        if (state) {
+          state.isLoading = true;
+        }
+      },
     }
   )
 );
 
 // 全局监听 Supabase auth 状态变化(session 建立/销毁)
-supabase.auth.onAuthStateChange(async (event, session) => {
+supabase.auth.onAuthStateChange((event, session) => {
   if (event === 'SIGNED_IN' && session) {
-    // 新 session 建立(如 OAuth 回调后):调后端同步用户
-    try {
-      const user = await AuthAPI.getCurrentUser();
-      const store = useAuthStore.getState();
-      store.setUser(user);
-      useAuthStore.setState({ isLoading: false });
-    } catch (error) {
-      console.error('Failed to sync user after sign in:', error);
-      useAuthStore.setState({ isLoading: false });
-    }
+    // 延迟到当前 auth 事件处理完成后再调 API,避免在回调内 getSession 死锁
+    setTimeout(() => {
+      void useAuthStore.getState().syncUserFromSession(session.access_token);
+    }, 0);
   } else if (event === 'SIGNED_OUT') {
     useAuthStore.setState({
       user: null,

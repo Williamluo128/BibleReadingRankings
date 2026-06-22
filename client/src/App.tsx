@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
@@ -15,7 +15,21 @@ import { GroupManagementPage } from '@/pages/GroupManagement';
 import { AnalyticsPage } from '@/pages/Analytics';
 
 function App() {
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+
+  useEffect(() => {
+    void checkAuth();
+  }, [checkAuth]);
+
+  const loginElement = isLoading ? (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+    </div>
+  ) : isAuthenticated ? (
+    <Navigate to="/" replace />
+  ) : (
+    <LoginPage />
+  );
 
   return (
     <Router>
@@ -23,9 +37,7 @@ function App() {
         {/* Public routes - redirect to home if already authenticated */}
         <Route
           path="/login"
-          element={
-            isAuthenticated ? <Navigate to="/" replace /> : <LoginPage />
-          }
+          element={loginElement}
         />
         {/* OAuth callback - Supabase redirects here after Google login */}
         <Route

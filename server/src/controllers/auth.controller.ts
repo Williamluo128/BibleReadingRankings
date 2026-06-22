@@ -7,6 +7,13 @@ export class AuthController {
   static async me(req: Request, res: Response): Promise<void> {
     try {
       const user = req.user;
+      if (!user) {
+        res.status(401).json({
+          success: false,
+          error: 'Not authenticated',
+        });
+        return;
+      }
 
       const response: ApiResponse = {
         success: true,

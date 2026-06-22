@@ -11,8 +11,34 @@ const app = express();
 app.use(helmet());
 
 // CORS configuration
+function isAllowedCorsOrigin(origin: string): boolean {
+  if (env.CORS_ORIGIN.includes(origin)) {
+    return true;
+  }
+
+  if (env.NODE_ENV === 'development' && /^https?:\/\/localhost(:\d+)?$/.test(origin)) {
+    return true;
+  }
+
+  // Vercel 生产/预览域名 (*.vercel.app)
+  if (/^https:\/\/[\w.-]+\.vercel\.app$/.test(origin)) {
+    return true;
+  }
+
+  return false;
+}
+
 app.use(cors({
-  origin: env.CORS_ORIGIN,
+  origin: (origin, callback) => {
+    if (!origin || isAllowedCorsOrigin(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    console.warn(`[cors] rejected origin: ${origin}`);
+    // 用 false 拒绝,避免 callback(Error) 触发 500
+    callback(null, false);
+  },
   credentials: true,
 }));
 
