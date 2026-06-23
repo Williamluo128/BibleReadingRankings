@@ -51,7 +51,7 @@ const BOOK_MAPPINGS: BookMapping[] = [
   { abbrev: 'jl', nameEn: 'Joel', nameCn: '约珥书', nameCnShort: '珥', testament: 'OT', order: 29 },
   { abbrev: 'am', nameEn: 'Amos', nameCn: '阿摩司书', nameCnShort: '摩', testament: 'OT', order: 30 },
   { abbrev: 'ob', nameEn: 'Obadiah', nameCn: '俄巴底亚书', nameCnShort: '俄', testament: 'OT', order: 31 },
-  { abbrev: 'jo', nameEn: 'Jonah', nameCn: '约拿书', nameCnShort: '拿', testament: 'OT', order: 32 },
+  { abbrev: 'jn', nameEn: 'Jonah', nameCn: '约拿书', nameCnShort: '拿', testament: 'OT', order: 32 },
   { abbrev: 'mi', nameEn: 'Micah', nameCn: '弥迦书', nameCnShort: '弥', testament: 'OT', order: 33 },
   { abbrev: 'na', nameEn: 'Nahum', nameCn: '那鸿书', nameCnShort: '鸿', testament: 'OT', order: 34 },
   { abbrev: 'hk', nameEn: 'Habakkuk', nameCn: '哈巴谷书', nameCnShort: '哈', testament: 'OT', order: 35 },
@@ -64,7 +64,7 @@ const BOOK_MAPPINGS: BookMapping[] = [
   { abbrev: 'mt', nameEn: 'Matthew', nameCn: '马太福音', nameCnShort: '太', testament: 'NT', order: 40 },
   { abbrev: 'mk', nameEn: 'Mark', nameCn: '马可福音', nameCnShort: '可', testament: 'NT', order: 41 },
   { abbrev: 'lk', nameEn: 'Luke', nameCn: '路加福音', nameCnShort: '路', testament: 'NT', order: 42 },
-  { abbrev: 'jn', nameEn: 'John', nameCn: '约翰福音', nameCnShort: '约', testament: 'NT', order: 43 },
+  { abbrev: 'jo', nameEn: 'John', nameCn: '约翰福音', nameCnShort: '约', testament: 'NT', order: 43 },
   { abbrev: 'act', nameEn: 'Acts', nameCn: '使徒行传', nameCnShort: '徒', testament: 'NT', order: 44 },
   { abbrev: 'rm', nameEn: 'Romans', nameCn: '罗马书', nameCnShort: '罗', testament: 'NT', order: 45 },
   { abbrev: '1co', nameEn: '1 Corinthians', nameCn: '哥林多前书', nameCnShort: '林前', testament: 'NT', order: 46 },
@@ -174,21 +174,24 @@ export class BibleImporter {
 
   async importVerses(chapterId: string, zhVerses: string[], enVerses: string[]) {
     const maxVerses = Math.min(zhVerses.length, enVerses.length);
-    
+    const data: { chapterId: string; verseNumber: number; textCn: string; textEn: string }[] = [];
+
     for (let verseIndex = 0; verseIndex < maxVerses; verseIndex++) {
       const zhText = zhVerses[verseIndex]?.trim();
       const enText = enVerses[verseIndex]?.trim();
-      
+
       if (!zhText || !enText) continue;
 
-      await prisma.bibleVerse.create({
-        data: {
-          chapterId,
-          verseNumber: verseIndex + 1,
-          textCn: zhText,
-          textEn: enText,
-        },
+      data.push({
+        chapterId,
+        verseNumber: verseIndex + 1,
+        textCn: zhText,
+        textEn: enText,
       });
+    }
+
+    if (data.length > 0) {
+      await prisma.bibleVerse.createMany({ data });
     }
   }
 

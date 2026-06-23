@@ -38,64 +38,75 @@ export const useReadingStore = create<ReadingState>((set, get) => ({
   error: null,
 
   markVerseAsRead: async (verseId: string) => {
+    const { readVerses, totalStats } = get();
+    if (readVerses.has(verseId)) {
+      return;
+    }
+
+    const prevReadVerses = new Set(readVerses);
+    const prevStats = totalStats;
+
+    const nextReadVerses = new Set(readVerses);
+    nextReadVerses.add(verseId);
+
+    set({
+      readVerses: nextReadVerses,
+      totalStats: totalStats
+        ? {
+            ...totalStats,
+            todayVerses: totalStats.todayVerses + 1,
+            totalVerses: totalStats.totalVerses + 1,
+          }
+        : totalStats,
+      error: null,
+    });
+
     try {
-      set({ isLoading: true, error: null });
-      
-      // 调用API记录阅读
       await ReadingAPI.recordVerse(verseId);
-      
-      // 更新本地状态
-      const currentReadVerses = new Set(get().readVerses);
-      currentReadVerses.add(verseId);
-      
-      set({ 
-        readVerses: currentReadVerses,
-        isLoading: false 
-      });
-      
-      // 刷新统计数据
-      get().loadTotalStats();
-      
     } catch (error) {
-      set({ 
+      set({
+        readVerses: prevReadVerses,
+        totalStats: prevStats,
         error: error instanceof Error ? error.message : '保存阅读记录失败',
-        isLoading: false 
       });
       throw error;
     }
   },
 
   markMultipleVersesAsRead: async (verseIds: string[]) => {
+    const { readVerses, totalStats } = get();
+    const unreadVerses = verseIds.filter((id) => !readVerses.has(id));
+
+    if (unreadVerses.length === 0) {
+      return;
+    }
+
+    const prevReadVerses = new Set(readVerses);
+    const prevStats = totalStats;
+    const addedCount = unreadVerses.length;
+
+    const nextReadVerses = new Set(readVerses);
+    unreadVerses.forEach((id) => nextReadVerses.add(id));
+
+    set({
+      readVerses: nextReadVerses,
+      totalStats: totalStats
+        ? {
+            ...totalStats,
+            todayVerses: totalStats.todayVerses + addedCount,
+            totalVerses: totalStats.totalVerses + addedCount,
+          }
+        : totalStats,
+      error: null,
+    });
+
     try {
-      set({ isLoading: true, error: null });
-      
-      // 过滤出未读的经文
-      const currentReadVerses = get().readVerses;
-      const unreadVerses = verseIds.filter(id => !currentReadVerses.has(id));
-      
-      if (unreadVerses.length === 0) {
-        set({ isLoading: false });
-        return;
-      }
-      
-      // 调用API批量记录阅读
       await ReadingAPI.recordMultipleVerses(unreadVerses);
-      
-      // 更新本地状态
-      const updatedReadVerses = new Set(currentReadVerses);
-      unreadVerses.forEach(id => updatedReadVerses.add(id));
-      
-      set({ 
-        readVerses: updatedReadVerses,
-        isLoading: false 
-      });
-      
-      // 刷新统计数据
-      get().loadTotalStats();
     } catch (error) {
-      set({ 
+      set({
+        readVerses: prevReadVerses,
+        totalStats: prevStats,
         error: error instanceof Error ? error.message : '批量保存阅读记录失败',
-        isLoading: false 
       });
       throw error;
     }
@@ -103,18 +114,15 @@ export const useReadingStore = create<ReadingState>((set, get) => ({
 
   loadReadStatus: async (verseIds: string[]) => {
     try {
-      set({ isLoading: true, error: null });
-      
       const readVerseIds = await ReadingAPI.getReadStatus(verseIds);
-      
-      set({ 
+
+      set({
         readVerses: new Set(readVerseIds),
-        isLoading: false 
+        error: null,
       });
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : '加载阅读状态失败',
-        isLoading: false 
       });
     }
   },

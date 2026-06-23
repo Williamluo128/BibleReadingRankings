@@ -346,111 +346,75 @@ export class ReadingService {
 
   // 获取阅读进度统计
   static async getProgressStats(userId: string) {
-    // 并行获取基础数据
-    const [books, totalChapters, totalVerses, readRecords] = await Promise.all([
-      // 获取所有书卷信息
+    const [books, totalChapters, totalVerses, readVersesCount, readChaptersRow, testamentRows, bookReadRows, chapterVerseGroups, chapters] = await Promise.all([
       prisma.bibleBook.findMany({
-        select: {
-          id: true,
-          nameCn: true,
-          testament: true,
-        },
+        select: { id: true, nameCn: true, testament: true },
+        orderBy: { bookOrder: 'asc' },
       }),
-      // 获取总章节数
       prisma.bibleChapter.count(),
-      // 获取总经文数
       prisma.bibleVerse.count(),
-      // 获取用户已读的经文（只需要基本信息）
-      prisma.readingRecord.findMany({
-        where: { userId },
-        select: {
-          verse: {
-            select: {
-              chapterId: true,
-              chapter: {
-                select: {
-                  bookId: true,
-                  book: {
-                    select: {
-                      testament: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+      prisma.readingRecord.count({ where: { userId } }),
+      prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(DISTINCT bc.id) AS count
+        FROM reading_records rr
+        INNER JOIN bible_verses bv ON rr.verse_id = bv.id
+        INNER JOIN bible_chapters bc ON bv.chapter_id = bc.id
+        WHERE rr.user_id = ${userId}
+      `,
+      prisma.$queryRaw<Array<{ testament: string; count: bigint }>>`
+        SELECT bb.testament, COUNT(*)::bigint AS count
+        FROM reading_records rr
+        INNER JOIN bible_verses bv ON rr.verse_id = bv.id
+        INNER JOIN bible_chapters bc ON bv.chapter_id = bc.id
+        INNER JOIN bible_books bb ON bc.book_id = bb.id
+        WHERE rr.user_id = ${userId}
+        GROUP BY bb.testament
+      `,
+      prisma.$queryRaw<Array<{ book_id: number; count: bigint }>>`
+        SELECT bc.book_id, COUNT(*)::bigint AS count
+        FROM reading_records rr
+        INNER JOIN bible_verses bv ON rr.verse_id = bv.id
+        INNER JOIN bible_chapters bc ON bv.chapter_id = bc.id
+        WHERE rr.user_id = ${userId}
+        GROUP BY bc.book_id
+      `,
+      prisma.bibleVerse.groupBy({
+        by: ['chapterId'],
+        _count: { id: true },
+      }),
+      prisma.bibleChapter.findMany({
+        select: { id: true, bookId: true },
       }),
     ]);
 
-    // 统计已读章节
-    const readChapters = new Set(readRecords.map(r => r.verse.chapterId));
-    const readVersesCount = readRecords.length;
+    const readChapters = Number(readChaptersRow[0]?.count ?? 0);
+    const readByBook = new Map(bookReadRows.map((r) => [r.book_id, Number(r.count)]));
 
-    // 统计旧约/新约阅读情况
-    const oldTestamentVerses = readRecords.filter(
-      r => r.verse.chapter.book.testament === 'OLD'
-    ).length;
-    const newTestamentVerses = readRecords.filter(
-      r => r.verse.chapter.book.testament === 'NEW'
-    ).length;
-
-    // 一次性获取所有书卷的经文数量
-    const bookVerseCounts = await prisma.bibleVerse.groupBy({
-      by: ['chapterId'],
-      _count: {
-        id: true,
-      },
-      where: {
-        chapter: {
-          bookId: {
-            in: books.map(b => b.id),
-          },
-        },
-      },
-    });
-
-    // 获取每个书卷的章节信息
-    const chapters = await prisma.bibleChapter.findMany({
-      where: {
-        bookId: {
-          in: books.map(b => b.id),
-        },
-      },
-      select: {
-        id: true,
-        bookId: true,
-      },
-    });
-
-    // 创建书卷ID到章节ID的映射
-    const bookToChapters = new Map<number, string[]>();
-    chapters.forEach(chapter => {
-      if (!bookToChapters.has(chapter.bookId)) {
-        bookToChapters.set(chapter.bookId, []);
+    let oldTestamentVerses = 0;
+    let newTestamentVerses = 0;
+    for (const row of testamentRows) {
+      if (row.testament === 'OT' || row.testament === 'OLD') {
+        oldTestamentVerses += Number(row.count);
+      } else if (row.testament === 'NT' || row.testament === 'NEW') {
+        newTestamentVerses += Number(row.count);
       }
-      bookToChapters.get(chapter.bookId)!.push(chapter.id);
+    }
+
+    const chapterVerseCount = new Map(chapterVerseGroups.map((item) => [item.chapterId, item._count.id]));
+    const bookToChapters = new Map<number, string[]>();
+    chapters.forEach((chapter) => {
+      const list = bookToChapters.get(chapter.bookId) ?? [];
+      list.push(chapter.id);
+      bookToChapters.set(chapter.bookId, list);
     });
 
-    // 创建章节ID到经文数量的映射
-    const chapterVerseCount = new Map<string, number>();
-    bookVerseCounts.forEach(item => {
-      chapterVerseCount.set(item.chapterId, item._count.id);
-    });
-
-    // 统计每卷书的阅读进度
-    const bookProgress = books.map(book => {
-      const chapterIds = bookToChapters.get(book.id) || [];
-
-      // 计算该书卷的总经文数
-      const totalBookVerses = chapterIds.reduce((sum, chapterId) => {
-        return sum + (chapterVerseCount.get(chapterId) || 0);
-      }, 0);
-
-      // 计算该书卷已读的经文数
-      const readBookVerses = readRecords.filter(
-        r => r.verse.chapter.bookId === book.id
-      ).length;
+    const bookProgress = books.map((book) => {
+      const chapterIds = bookToChapters.get(book.id) ?? [];
+      const totalBookVerses = chapterIds.reduce(
+        (sum, chapterId) => sum + (chapterVerseCount.get(chapterId) ?? 0),
+        0,
+      );
+      const readBookVerses = readByBook.get(book.id) ?? 0;
 
       return {
         bookId: book.id,
@@ -462,7 +426,6 @@ export class ReadingService {
       };
     });
 
-    // 计算连续阅读天数
     const [currentStreak, longestStreak] = await Promise.all([
       this.calculateCurrentStreak(userId),
       this.calculateLongestStreak(userId),
@@ -471,11 +434,11 @@ export class ReadingService {
     return {
       overall: {
         totalChapters,
-        readChapters: readChapters.size,
-        chaptersProgress: (readChapters.size / totalChapters) * 100,
+        readChapters,
+        chaptersProgress: totalChapters > 0 ? (readChapters / totalChapters) * 100 : 0,
         totalVerses,
         readVerses: readVersesCount,
-        versesProgress: (readVersesCount / totalVerses) * 100,
+        versesProgress: totalVerses > 0 ? (readVersesCount / totalVerses) * 100 : 0,
       },
       testament: {
         oldTestament: oldTestamentVerses,

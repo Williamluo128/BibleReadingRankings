@@ -92,18 +92,12 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false,
           });
-          // #region agent log
-          fetch('http://127.0.0.1:7909/ingest/24def34c-6315-45bf-a5d3-0f76b2a3ef88',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ce6c75'},body:JSON.stringify({sessionId:'ce6c75',location:'auth.store.ts:syncUserFromSession',message:'sync ok',data:{userId:user.id},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
           return { ok: true, authFailed: false };
         } catch (error) {
           console.error('Failed to sync user from session:', error);
           const status = (error as { response?: { status?: number; code?: string } })?.response?.status;
           const code = (error as { response?: { status?: number; code?: string } })?.response?.code;
           const message = error instanceof Error ? error.message : 'unknown';
-          // #region agent log
-          fetch('http://127.0.0.1:7909/ingest/24def34c-6315-45bf-a5d3-0f76b2a3ef88',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ce6c75'},body:JSON.stringify({sessionId:'ce6c75',location:'auth.store.ts:syncUserFromSession',message:'sync failed',data:{status,code,message},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-          // #endregion
           set({ isLoading: false });
           return { ok: false, authFailed: isAuthFailure(error), status, error: code ? `${code}: ${message}` : message };
         }
@@ -132,9 +126,6 @@ export const useAuthStore = create<AuthState>()(
           if (isAuthenticated && user) {
             // OAuth 刚完成时 Supabase session 可能尚未可读,保留已同步的 zustand 状态
             set({ isLoading: false });
-            // #region agent log
-            fetch('http://127.0.0.1:7909/ingest/24def34c-6315-45bf-a5d3-0f76b2a3ef88',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ce6c75'},body:JSON.stringify({sessionId:'ce6c75',location:'auth.store.ts:checkAuth',message:'keep zustand auth without session',data:{userId:user.id},timestamp:Date.now(),hypothesisId:'D',runId:'post-fix'})}).catch(()=>{});
-            // #endregion
             return;
           }
           set({
@@ -153,6 +144,15 @@ export const useAuthStore = create<AuthState>()(
         const result = await get().syncUserFromSession(normalizeAccessToken(session.access_token));
         if (!result.ok && result.authFailed) {
           await supabase.auth.signOut();
+          set({
+            user: null,
+            isAuthenticated: false,
+            isLoading: false,
+          });
+          return;
+        }
+
+        if (!result.ok) {
           set({
             user: null,
             isAuthenticated: false,
@@ -181,17 +181,31 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-useAuthStore.persist.onFinishHydration(() => {
-  const { isAuthenticated, user } = useAuthStore.getState();
+function finishAuthHydration(): void {
+  const { isAuthenticated, user, hasHydrated } = useAuthStore.getState();
+  if (hasHydrated) {
+    return;
+  }
+
   const ready = !!(isAuthenticated && user);
   useAuthStore.setState({
     hasHydrated: true,
     isLoading: ready ? false : useAuthStore.getState().isLoading,
   });
-  // #region agent log
-  fetch('http://127.0.0.1:7909/ingest/24def34c-6315-45bf-a5d3-0f76b2a3ef88',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ce6c75'},body:JSON.stringify({sessionId:'ce6c75',location:'auth.store.ts:onFinishHydration',message:'hydration_done',data:{isAuthenticated,hasUser:!!user,isLoading:!ready},timestamp:Date.now(),hypothesisId:'K',runId:'post-fix'})}).catch(()=>{});
-  // #endregion
+
+  if (!ready) {
+    void useAuthStore.getState().checkAuth();
+  }
+}
+
+useAuthStore.persist.onFinishHydration(() => {
+  finishAuthHydration();
 });
+
+// 若 rehydrate 在 onFinishHydration 注册前已完成,必须手动补一次
+if (useAuthStore.persist.hasHydrated()) {
+  finishAuthHydration();
+}
 
 supabase.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT') {

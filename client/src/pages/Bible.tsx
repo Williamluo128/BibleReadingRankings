@@ -21,12 +21,12 @@ export const BiblePage: React.FC = () => {
 
   const handleBookSelect = async (book: BibleBook) => {
     await selectBook(book.id);
-    setShowSidebar(false);
   };
 
   const handleChapterSelect = async (chapterNumber: number) => {
     if (currentBook) {
       await loadChapter(currentBook.id, chapterNumber);
+      setShowSidebar(false);
     }
   };
 
@@ -148,7 +148,7 @@ export const BiblePage: React.FC = () => {
       {/* Sidebar Overlay */}
       {showSidebar && (
         <div
-          className="fixed inset-0 bg-white/80 backdrop-blur-sm z-30 lg:hidden"
+          className="fixed inset-0 bg-white/45 backdrop-blur-[2px] z-30 lg:hidden"
           onClick={() => setShowSidebar(false)}
         />
       )}

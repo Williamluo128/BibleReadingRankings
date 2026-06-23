@@ -15,9 +15,13 @@ export const BibleReader: React.FC<BibleReaderProps> = ({ onVerseRead }) => {
     markMultipleVersesAsRead,
     loadReadStatus,
     totalStats,
-    isLoading: readingLoading
+    loadTotalStats,
   } = useReadingStore();
   const [selectedVerses, setSelectedVerses] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    void loadTotalStats();
+  }, [loadTotalStats]);
 
   // 当章节变化时，加载阅读状态
   useEffect(() => {
@@ -27,7 +31,7 @@ export const BibleReader: React.FC<BibleReaderProps> = ({ onVerseRead }) => {
     }
   }, [currentChapter, loadReadStatus]);
 
-  const handleVerseClick = async (verse: BibleVerse) => {
+  const handleVerseClick = (verse: BibleVerse) => {
     const newSelected = new Set(selectedVerses);
     const isCurrentlySelected = newSelected.has(verse.id);
 
@@ -36,27 +40,21 @@ export const BibleReader: React.FC<BibleReaderProps> = ({ onVerseRead }) => {
     } else {
       newSelected.add(verse.id);
       onVerseRead?.(verse);
-
-      // 立即标记为已读
-      try {
-        await markVerseAsRead(verse.id);
-      } catch (error) {
+      void markVerseAsRead(verse.id).catch((error) => {
         console.error('Failed to mark verse as read:', error);
-      }
+      });
     }
     setSelectedVerses(newSelected);
   };
 
-  const handleSaveAllSelected = async () => {
+  const handleSaveAllSelected = () => {
     if (selectedVerses.size === 0) return;
 
-    try {
-      const verseIds = Array.from(selectedVerses);
-      await markMultipleVersesAsRead(verseIds);
-      setSelectedVerses(new Set()); // 清空选择
-    } catch (error) {
+    const verseIds = Array.from(selectedVerses);
+    setSelectedVerses(new Set());
+    void markMultipleVersesAsRead(verseIds).catch((error) => {
       console.error('Failed to save reading records:', error);
-    }
+    });
   };
 
   if (isLoading) {
@@ -175,10 +173,9 @@ export const BibleReader: React.FC<BibleReaderProps> = ({ onVerseRead }) => {
             </button>
             <button
               onClick={handleSaveAllSelected}
-              disabled={readingLoading}
               className="text-sm font-bold uppercase tracking-wide hover:text-gray-300 transition-colors"
             >
-              {readingLoading ? '保存中...' : '确认已读'}
+              确认已读
             </button>
           </div>
         </div>

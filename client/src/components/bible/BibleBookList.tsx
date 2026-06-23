@@ -106,20 +106,6 @@ export const BibleBookList: React.FC<BibleBookListProps> = ({
         </div>
       </div>
 
-      <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
-        <div className="flex items-start">
-          <svg className="h-5 w-5 mt-0.5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <p className="text-sm">
-              <strong>完整版本：</strong>现在可以阅读全部66卷圣经，包括旧约39卷和新约27卷。
-              支持中英文对照阅读，并可追踪阅读进度。
-            </p>
-          </div>
-        </div>
-      </div>
-
       <BookSection title="旧约 (Old Testament)" books={otBooks} />
       <BookSection title="新约 (New Testament)" books={ntBooks} />
     </div>

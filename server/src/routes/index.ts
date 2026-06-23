@@ -12,15 +12,6 @@ import adminRoutes from './admin';
 
 const router = Router();
 
-// API Routes
-router.use('/auth', authRoutes);
-router.use('/bible', bibleRoutes);
-router.use('/reading', readingRoutes);
-router.use('/friends', friendshipRoutes);
-router.use('/leaderboard', leaderboardRouter);
-router.use('/groups', groupRoutes);
-router.use('/admin', adminRoutes);
-
 async function probeAuthConfig(): Promise<{
   supabaseHost: string;
   jwtSecretOk: boolean;
@@ -56,6 +47,35 @@ async function probeAuthConfig(): Promise<{
 
   return { supabaseHost, jwtSecretOk, serviceRoleOk };
 }
+
+// GET /api —— API 根路径(健康检查入口)
+router.get('/', async (_req, res) => {
+  try {
+    const auth = await probeAuthConfig();
+    res.json({
+      success: true,
+      message: 'Bible Reading Rankings API',
+      health: '/api/health',
+      timestamp: new Date().toISOString(),
+      auth,
+    });
+  } catch (error) {
+    res.status(503).json({
+      success: false,
+      message: error instanceof Error ? error.message : 'API unavailable',
+      timestamp: new Date().toISOString(),
+    });
+  }
+});
+
+// API Routes
+router.use('/auth', authRoutes);
+router.use('/bible', bibleRoutes);
+router.use('/reading', readingRoutes);
+router.use('/friends', friendshipRoutes);
+router.use('/leaderboard', leaderboardRouter);
+router.use('/groups', groupRoutes);
+router.use('/admin', adminRoutes);
 
 // Health check
 router.get('/health', async (_req, res) => {
