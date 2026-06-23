@@ -15,7 +15,7 @@ import { GroupManagementPage } from '@/pages/GroupManagement';
 import { AnalyticsPage } from '@/pages/Analytics';
 
 function AppRoutes() {
-  const { isAuthenticated, isLoading, checkAuth, hasHydrated } = useAuthStore();
+  const { isAuthenticated, isLoading, checkAuth, hasHydrated, user } = useAuthStore();
   const location = useLocation();
   const isAuthCallback = location.pathname === '/auth/callback';
 
@@ -23,11 +23,11 @@ function AppRoutes() {
     if (!hasHydrated) {
       return;
     }
-    // OAuth 回调页自行处理 session,避免 PKCE 未完成时过早调用 /auth/me
-    if (!isAuthCallback) {
+    // OAuth 回调页自行处理;已有 user 时跳过,避免 checkAuth 误清刚登录的状态
+    if (!isAuthCallback && !(isAuthenticated && user)) {
       void checkAuth();
     }
-  }, [checkAuth, isAuthCallback, hasHydrated]);
+  }, [checkAuth, isAuthCallback, hasHydrated, isAuthenticated, user]);
 
   const loginElement = !hasHydrated || isLoading ? (
     <div className="min-h-screen flex items-center justify-center">

@@ -111,9 +111,18 @@ export const useAuthStore = create<AuthState>()(
       checkAuth: async () => {
         await waitForAuthHydration();
 
+        const { user, isAuthenticated } = get();
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session?.access_token) {
+          if (isAuthenticated && user) {
+            // OAuth 刚完成时 Supabase session 可能尚未可读,保留已同步的 zustand 状态
+            set({ isLoading: false });
+            // #region agent log
+            fetch('http://127.0.0.1:7909/ingest/24def34c-6315-45bf-a5d3-0f76b2a3ef88',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ce6c75'},body:JSON.stringify({sessionId:'ce6c75',location:'auth.store.ts:checkAuth',message:'keep zustand auth without session',data:{userId:user.id},timestamp:Date.now(),hypothesisId:'D',runId:'post-fix'})}).catch(()=>{});
+            // #endregion
+            return;
+          }
           set({
             user: null,
             isAuthenticated: false,
@@ -122,7 +131,6 @@ export const useAuthStore = create<AuthState>()(
           return;
         }
 
-        const { user, isAuthenticated } = get();
         if (isAuthenticated && user) {
           set({ isLoading: false });
           return;

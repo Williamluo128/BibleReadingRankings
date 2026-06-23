@@ -37,8 +37,13 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      supabase.auth.signOut();
-      window.location.href = '/login';
+      const headers = error.config?.headers as Record<string, string> | undefined;
+      const hadAuth = headers?.Authorization || headers?.authorization;
+      // 仅在有 Authorization 仍 401 时才登出,避免 getSession 竞态导致无 token 请求触发误登出
+      if (hadAuth) {
+        supabase.auth.signOut();
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }

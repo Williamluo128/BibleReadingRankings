@@ -2,6 +2,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+function cleanEnv(value: string | undefined): string {
+  return (value || '').trim().replace(/^"|"$/g, '');
+}
+
 function buildCorsOrigins(): string[] {
   const origins = (process.env.CORS_ORIGIN || 'http://localhost:5173')
     .split(',')
@@ -22,11 +26,11 @@ function buildCorsOrigins(): string[] {
 export const env = {
   PORT: process.env.PORT || 3001,
   NODE_ENV: process.env.NODE_ENV || 'development',
-  DATABASE_URL: process.env.DATABASE_URL!,
+  DATABASE_URL: cleanEnv(process.env.DATABASE_URL),
   // Supabase:后端用 service_role key 调 Supabase API、用 JWT secret 验证 access token
-  SUPABASE_URL: process.env.SUPABASE_URL!,
-  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  SUPABASE_JWT_SECRET: process.env.SUPABASE_JWT_SECRET!,
+  SUPABASE_URL: cleanEnv(process.env.SUPABASE_URL),
+  SUPABASE_SERVICE_ROLE_KEY: cleanEnv(process.env.SUPABASE_SERVICE_ROLE_KEY),
+  SUPABASE_JWT_SECRET: cleanEnv(process.env.SUPABASE_JWT_SECRET),
   CORS_ORIGIN: buildCorsOrigins(),
   // 首次用 Google 登录时,邮箱命中此列表的用户自动赋予 SUPER_ADMIN 角色
   ADMIN_EMAILS: (process.env.ADMIN_EMAILS || '')
@@ -45,7 +49,7 @@ export function ensureEnv(): void {
     return;
   }
 
-  const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+  const missingEnvVars = requiredEnvVars.filter((envVar) => !cleanEnv(process.env[envVar]));
   if (missingEnvVars.length > 0) {
     throw new Error(`Missing required environment variables: ${missingEnvVars.join(', ')}`);
   }

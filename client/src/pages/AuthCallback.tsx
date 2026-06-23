@@ -112,6 +112,9 @@ export const AuthCallback: React.FC = () => {
       }
 
       finish('/', 'success');
+      // #region agent log
+      debugLog('finish_success', { isAuthenticated: useAuthStore.getState().isAuthenticated }, 'D');
+      // #endregion
     })();
   }, [hasHydrated, navigate]);
 
