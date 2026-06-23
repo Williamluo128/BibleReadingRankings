@@ -120,10 +120,19 @@ export class AuthService {
   }
 
   /**
-   * 更新自己的资料(.displayName / avatarUrl)
+   * 更新自己的资料(username / displayName / avatarUrl)
    */
   static async updateProfile(userId: string, data: UpdateProfileRequest): Promise<User> {
-    const updateData: any = {};
+    const updateData: Record<string, string | null> = {};
+    if (data.username !== undefined) {
+      const taken = await prisma.user.findFirst({
+        where: { username: data.username, NOT: { id: userId } },
+      });
+      if (taken) {
+        throw new Error('用户名已被占用');
+      }
+      updateData.username = data.username;
+    }
     if (data.displayName !== undefined) {
       updateData.displayName = data.displayName;
     }
@@ -131,10 +140,30 @@ export class AuthService {
       updateData.avatarUrl = data.avatarUrl;
     }
 
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: updateData,
-    });
-    return toUser(updated);
+    if (Object.keys(updateData).length === 0) {
+      const current = await prisma.user.findUnique({ where: { id: userId } });
+      if (!current) {
+        throw new Error('用户不存在');
+      }
+      return toUser(current);
+    }
+
+    try {
+      const updated = await prisma.user.update({
+        where: { id: userId },
+        data: updateData,
+      });
+      return toUser(updated);
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        (error as { code: string }).code === 'P2002'
+      ) {
+        throw new Error('用户名已被占用');
+      }
+      throw error;
+    }
   }
 }

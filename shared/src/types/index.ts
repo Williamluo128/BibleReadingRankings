@@ -14,6 +14,7 @@ export interface User {
 
 // 资料更新请求(Supabase Auth 接管登录/注册/密码,本地仅存业务字段)
 export interface UpdateProfileRequest {
+  username?: string;
   displayName?: string;
   avatarUrl?: string;
 }

@@ -15,6 +15,7 @@ interface AuthState {
   checkAuth: () => Promise<void>;
   syncUserFromSession: (accessToken: string) => Promise<{ ok: boolean; authFailed: boolean; status?: number; error?: string }>;
   setUser: (user: User | null) => void;
+  updateProfile: (data: { username?: string; displayName?: string }) => Promise<void>;
 }
 
 function waitForAuthHydration(): Promise<void> {
@@ -163,6 +164,11 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user: User | null) => {
         set({ user, isAuthenticated: !!user, isLoading: false });
+      },
+
+      updateProfile: async (data) => {
+        const updated = await AuthAPI.updateProfile(data);
+        set({ user: updated, isAuthenticated: true, isLoading: false });
       },
     }),
     {

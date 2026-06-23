@@ -32,7 +32,7 @@ export class AuthController {
     }
   }
 
-  // PATCH /api/auth/profile —— 更新 displayName / avatarUrl
+  // PATCH /api/auth/profile —— 更新 username / displayName / avatarUrl
   static async updateProfile(req: Request, res: Response): Promise<void> {
     try {
       const user = req.user;

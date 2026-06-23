@@ -11,7 +11,7 @@ router.get('/me',
   AuthController.me
 );
 
-// PATCH /api/auth/profile —— 更新 displayName / avatarUrl
+// PATCH /api/auth/profile —— 更新 username / displayName / avatarUrl
 router.patch('/profile',
   authenticateToken,
   validateRequest(updateProfileSchema),

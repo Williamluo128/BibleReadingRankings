@@ -80,7 +80,7 @@ export class AuthAPI {
     return body.data.user;
   }
 
-  static async updateProfile(data: { displayName?: string; avatarUrl?: string }): Promise<User> {
+  static async updateProfile(data: { username?: string; displayName?: string; avatarUrl?: string }): Promise<User> {
     const response = await api.patch<ApiResponse<{ user: User }>>('/auth/profile', data);
     return response.data.data!.user;
   }

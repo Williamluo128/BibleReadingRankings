@@ -1,9 +1,23 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigation } from '@/components/Navigation';
 import { useAuthStore } from '@/stores/auth.store';
 
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]+$/;
+
 export const SettingsPage: React.FC = () => {
-  const { user } = useAuthStore();
+  const { user, updateProfile } = useAuthStore();
+  const [username, setUsername] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (user) {
+      setUsername(user.username);
+      setDisplayName(user.displayName);
+    }
+  }, [user]);
 
   if (!user) {
     return (
@@ -18,32 +32,104 @@ export const SettingsPage: React.FC = () => {
     );
   }
 
+  const trimmedUsername = username.trim().toLowerCase();
+  const trimmedDisplayName = displayName.trim();
+  const hasChanges =
+    trimmedUsername !== user.username || trimmedDisplayName !== user.displayName;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setSuccess(null);
+
+    if (!trimmedDisplayName) {
+      setError('显示名称不能为空');
+      return;
+    }
+    if (trimmedUsername.length < 3) {
+      setError('用户名至少3个字符');
+      return;
+    }
+    if (!USERNAME_PATTERN.test(trimmedUsername)) {
+      setError('用户名只能包含字母、数字和下划线');
+      return;
+    }
+    if (!hasChanges) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await updateProfile({
+        username: trimmedUsername,
+        displayName: trimmedDisplayName,
+      });
+      setSuccess('资料已保存');
+    } catch (err) {
+      const message =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+        (err instanceof Error ? err.message : '保存失败，请稍后重试');
+      setError(message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
 
       <div className="max-w-3xl mx-auto py-12 px-8">
-        {/* Header - Minimalist */}
         <div className="mb-12 border-b border-gray-100 pb-8">
           <h1 className="text-4xl font-light text-gray-900 tracking-tight mb-2">账户设置</h1>
           <p className="text-gray-500 font-light">管理您的个人信息</p>
         </div>
 
-        {/* Content */}
-        <div className="space-y-12">
+        <form onSubmit={handleSubmit} className="space-y-12">
           <div className="grid grid-cols-1 gap-12">
             <div className="border-b border-gray-100 pb-8">
-              <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2">用户名</label>
-              <div className="text-xl font-light text-gray-900 font-mono">
-                @{user.username}
+              <label htmlFor="username" className="block text-xs uppercase tracking-wider text-gray-400 mb-2">
+                用户名
+              </label>
+              <div className="flex items-center">
+                <span className="text-xl font-light text-gray-400 font-mono mr-1">@</span>
+                <input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => {
+                    setUsername(e.target.value);
+                    setError(null);
+                    setSuccess(null);
+                  }}
+                  maxLength={30}
+                  className="flex-1 text-xl font-light text-gray-900 font-mono border-b border-gray-200 py-1 focus:border-gray-900 focus:outline-none transition-colors bg-transparent"
+                  autoComplete="username"
+                  spellCheck={false}
+                />
               </div>
+              <p className="mt-2 text-xs text-gray-400 font-light">
+                3–30 个字符，仅支持字母、数字和下划线
+              </p>
             </div>
 
             <div className="border-b border-gray-100 pb-8">
-              <label className="block text-xs uppercase tracking-wider text-gray-400 mb-2">显示名称</label>
-              <div className="text-xl font-light text-gray-900">
-                {user.displayName}
-              </div>
+              <label htmlFor="displayName" className="block text-xs uppercase tracking-wider text-gray-400 mb-2">
+                显示名称
+              </label>
+              <input
+                id="displayName"
+                type="text"
+                value={displayName}
+                onChange={(e) => {
+                  setDisplayName(e.target.value);
+                  setError(null);
+                  setSuccess(null);
+                }}
+                maxLength={50}
+                className="w-full text-xl font-light text-gray-900 border-b border-gray-200 py-1 focus:border-gray-900 focus:outline-none transition-colors bg-transparent"
+                autoComplete="name"
+              />
             </div>
 
             <div className="border-b border-gray-100 pb-8">
@@ -93,10 +179,21 @@ export const SettingsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="text-sm text-gray-400 font-light italic">
-            如需修改个人信息，请联系管理员。
-          </div>
-        </div>
+          {error && (
+            <p className="text-sm text-red-600">{error}</p>
+          )}
+          {success && (
+            <p className="text-sm text-green-600">{success}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={isSaving || !hasChanges}
+            className="px-6 py-2 text-sm uppercase tracking-wider text-white bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+          >
+            {isSaving ? '保存中…' : '保存更改'}
+          </button>
+        </form>
       </div>
     </div>
   );
