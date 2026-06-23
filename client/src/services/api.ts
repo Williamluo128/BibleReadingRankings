@@ -11,18 +11,6 @@ export const api = axios.create({
   },
 });
 
-function hasAuthHeader(config: { headers?: unknown }): boolean {
-  const headers = config.headers as Record<string, string> | undefined;
-  if (!headers) return false;
-  return Boolean(headers.Authorization || headers.authorization);
-}
-
-function setAuthHeader(config: { headers?: unknown }, token: string): void {
-  const headers = (config.headers ?? {}) as Record<string, string>;
-  headers.Authorization = `Bearer ${token}`;
-  config.headers = headers;
-}
-
 async function resolveAccessToken(explicitToken?: string): Promise<string | null> {
   const token = explicitToken?.trim();
   if (token) return token;
@@ -31,20 +19,20 @@ async function resolveAccessToken(explicitToken?: string): Promise<string | null
   return session?.access_token ?? null;
 }
 
-// Request interceptor:从 Supabase session 取 access_token 注入
 api.interceptors.request.use(async (config) => {
-  if (hasAuthHeader(config)) {
+  const headers = config.headers as Record<string, string> | undefined;
+  if (headers?.Authorization || headers?.authorization) {
     return config;
   }
 
   const token = await resolveAccessToken();
   if (token) {
-    setAuthHeader(config, token);
+    config.headers = config.headers ?? {};
+    (config.headers as Record<string, string>).Authorization = `Bearer ${token}`;
   }
   return config;
 });
 
-// Response interceptor:401 时登出并跳转
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -57,20 +45,31 @@ api.interceptors.response.use(
 );
 
 export class AuthAPI {
-  // GET /api/auth/me —— 返回本地用户(后端中间件会 upsert)
-  static async getCurrentUser(accessToken?: string): Promise<User> {
-    const token = await resolveAccessToken(accessToken);
+  static async getCurrentUser(accessToken: string): Promise<User> {
+    const token = accessToken.trim();
     if (!token) {
       throw new Error('No access token available');
     }
 
-    const response = await api.get<ApiResponse<{ user: User }>>('/auth/me', {
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
-    return response.data.data!.user;
+
+    const body = await response.json() as ApiResponse<{ user: User }>;
+
+    if (!response.ok || !body.success || !body.data?.user) {
+      const err = new Error(body.error || `Auth failed with status ${response.status}`);
+      (err as Error & { response?: { status: number } }).response = { status: response.status };
+      throw err;
+    }
+
+    return body.data.user;
   }
 
-  // PATCH /api/auth/profile —— 更新 displayName / avatarUrl
   static async updateProfile(data: { displayName?: string; avatarUrl?: string }): Promise<User> {
     const response = await api.patch<ApiResponse<{ user: User }>>('/auth/profile', data);
     return response.data.data!.user;

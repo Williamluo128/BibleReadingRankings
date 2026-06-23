@@ -1,67 +1,66 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase, waitForAccessToken } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth.store';
 
 /**
  * OAuth 回调落地页。
- * Supabase PKCE 完成后带着 ?code= 跳回这里,SDK 异步交换 session。
+ * 显式 exchangeCodeForSession,确保 PKCE 完成后再调 /auth/me。
  */
 export const AuthCallback: React.FC = () => {
   const navigate = useNavigate();
-  const isAuthenticated = useAuthStore(s => s.isAuthenticated);
 
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/', { replace: true });
-      return;
-    }
-
-    let done = false;
     const finish = (path: '/' | '/login') => {
-      if (done) return;
-      done = true;
       navigate(path, { replace: true });
     };
 
-    const unsub = useAuthStore.subscribe(s => {
-      if (s.isAuthenticated) {
-        finish('/');
-      }
-    });
-
-    const completeLogin = async (accessToken: string) => {
-      const result = await useAuthStore.getState().syncUserFromSession(accessToken);
-      finish(result.ok ? '/' : '/login');
-    };
-
-    // 优先监听 SIGNED_IN(PKCE 交换完成后触发,此时 access_token 一定可用)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.access_token) {
-        void completeLogin(session.access_token);
-      }
-    });
-
-    // 兜底:轮询等待 access_token(防止 onAuthStateChange 已先触发)
     void (async () => {
-      const token = await waitForAccessToken();
-      if (!token) {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get('code');
+      const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+      const hashError = hashParams.get('error_description') || hashParams.get('error');
+
+      if (hashError) {
         finish('/login');
         return;
       }
-      if (!useAuthStore.getState().isAuthenticated) {
-        await completeLogin(token);
+
+      // React StrictMode 会双 mount;用 sessionStorage 防止同一 code 重复 exchange
+      if (code) {
+        const codeKey = `oauth_code_${code.slice(0, 24)}`;
+        if (sessionStorage.getItem(codeKey)) {
+          finish(useAuthStore.getState().isAuthenticated ? '/' : '/login');
+          return;
+        }
+        sessionStorage.setItem(codeKey, '1');
       }
+
+      let accessToken: string | null = null;
+
+      if (code) {
+        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+        if (error || !data.session?.access_token) {
+          const { data: { session } } = await supabase.auth.getSession();
+          accessToken = session?.access_token ?? null;
+        } else {
+          accessToken = data.session.access_token;
+        }
+      } else {
+        const { data: { session } } = await supabase.auth.getSession();
+        accessToken = session?.access_token ?? null;
+      }
+
+      if (!accessToken) {
+        finish('/login');
+        return;
+      }
+
+      const result = await useAuthStore.getState().syncUserFromSession(accessToken);
+      finish(result.ok ? '/' : '/login');
     })();
-
-    const timeout = setTimeout(() => finish('/login'), 15000);
-
-    return () => {
-      unsub();
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
-  }, [navigate, isAuthenticated]);
+  }, [navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">

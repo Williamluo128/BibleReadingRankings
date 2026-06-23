@@ -63,7 +63,6 @@ export const useAuthStore = create<AuthState>()(
       syncUserFromSession: async (accessToken: string) => {
         const token = accessToken?.trim();
         if (!token) {
-          console.error('Failed to sync user from session: missing access token');
           return { ok: false, authFailed: false };
         }
 
@@ -131,12 +130,8 @@ export const useAuthStore = create<AuthState>()(
   )
 );
 
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_IN' && session?.access_token) {
-    setTimeout(() => {
-      void useAuthStore.getState().syncUserFromSession(session.access_token);
-    }, 0);
-  } else if (event === 'SIGNED_OUT') {
+supabase.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_OUT') {
     useAuthStore.setState({
       user: null,
       isAuthenticated: false,
