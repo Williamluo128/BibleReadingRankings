@@ -23,11 +23,14 @@ function AppRoutes() {
     if (!hasHydrated) {
       return;
     }
-    // OAuth 回调页自行处理;已有 user 时跳过,避免 checkAuth 误清刚登录的状态
+    if (isAuthenticated && user && isLoading) {
+      useAuthStore.setState({ isLoading: false });
+      return;
+    }
     if (!isAuthCallback && !(isAuthenticated && user)) {
       void checkAuth();
     }
-  }, [checkAuth, isAuthCallback, hasHydrated, isAuthenticated, user]);
+  }, [checkAuth, isAuthCallback, hasHydrated, isAuthenticated, user, isLoading]);
 
   const loginElement = !hasHydrated || isLoading ? (
     <div className="min-h-screen flex items-center justify-center">

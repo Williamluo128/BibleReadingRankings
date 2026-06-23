@@ -14,11 +14,14 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     if (!hasHydrated) {
       return;
     }
-    // 已从 OAuth 同步到 user 时,不必重复 checkAuth(避免刚登录又被踢回)
+    if (isAuthenticated && user && isLoading) {
+      useAuthStore.setState({ isLoading: false });
+      return;
+    }
     if (!isAuthenticated || !user) {
       void checkAuth();
     }
-  }, [checkAuth, isAuthenticated, user, hasHydrated]);
+  }, [checkAuth, isAuthenticated, user, hasHydrated, isLoading]);
 
   if (!hasHydrated || isLoading) {
     return (

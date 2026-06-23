@@ -172,7 +172,8 @@ export const useAuthStore = create<AuthState>()(
         isAuthenticated: state.isAuthenticated,
       }),
       onRehydrateStorage: () => (state) => {
-        if (state) {
+        // 已有持久化登录态时不进入 loading,避免刷新后卡在 spinner
+        if (state && !(state.isAuthenticated && state.user)) {
           state.isLoading = true;
         }
       },
@@ -181,7 +182,15 @@ export const useAuthStore = create<AuthState>()(
 );
 
 useAuthStore.persist.onFinishHydration(() => {
-  useAuthStore.setState({ hasHydrated: true });
+  const { isAuthenticated, user } = useAuthStore.getState();
+  const ready = !!(isAuthenticated && user);
+  useAuthStore.setState({
+    hasHydrated: true,
+    isLoading: ready ? false : useAuthStore.getState().isLoading,
+  });
+  // #region agent log
+  fetch('http://127.0.0.1:7909/ingest/24def34c-6315-45bf-a5d3-0f76b2a3ef88',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ce6c75'},body:JSON.stringify({sessionId:'ce6c75',location:'auth.store.ts:onFinishHydration',message:'hydration_done',data:{isAuthenticated,hasUser:!!user,isLoading:!ready},timestamp:Date.now(),hypothesisId:'K',runId:'post-fix'})}).catch(()=>{});
+  // #endregion
 });
 
 supabase.auth.onAuthStateChange((event) => {

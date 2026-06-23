@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/stores/auth.store';
 import { isJwtFormat, normalizeAccessToken } from '@/lib/auth-token';
@@ -43,6 +44,7 @@ let callbackLock: string | null = null;
  * 显式 exchangeCodeForSession,确保 PKCE 完成后再调 /auth/me。
  */
 export const AuthCallback: React.FC = () => {
+  const navigate = useNavigate();
   const hasHydrated = useAuthStore((s) => s.hasHydrated);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -165,9 +167,9 @@ export const AuthCallback: React.FC = () => {
         reason: 'success',
         isAuthenticated: useAuthStore.getState().isAuthenticated,
       }, 'D');
-      window.location.replace('/');
+      navigate('/', { replace: true });
     })();
-  }, [hasHydrated]);
+  }, [hasHydrated, navigate]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
