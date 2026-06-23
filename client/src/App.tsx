@@ -15,18 +15,21 @@ import { GroupManagementPage } from '@/pages/GroupManagement';
 import { AnalyticsPage } from '@/pages/Analytics';
 
 function AppRoutes() {
-  const { isAuthenticated, isLoading, checkAuth } = useAuthStore();
+  const { isAuthenticated, isLoading, checkAuth, hasHydrated } = useAuthStore();
   const location = useLocation();
   const isAuthCallback = location.pathname === '/auth/callback';
 
   useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
     // OAuth 回调页自行处理 session,避免 PKCE 未完成时过早调用 /auth/me
     if (!isAuthCallback) {
       void checkAuth();
     }
-  }, [checkAuth, isAuthCallback]);
+  }, [checkAuth, isAuthCallback, hasHydrated]);
 
-  const loginElement = isLoading ? (
+  const loginElement = !hasHydrated || isLoading ? (
     <div className="min-h-screen flex items-center justify-center">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
     </div>

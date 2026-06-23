@@ -162,6 +162,7 @@ export const authenticateToken = async (
       res.status(401).json({
         success: false,
         error: 'Access token is required',
+        code: 'ACCESS_TOKEN_REQUIRED',
       });
       return;
     }
@@ -176,6 +177,7 @@ export const authenticateToken = async (
       res.status(500).json({
         success: false,
         error: 'Failed to sync user profile',
+        code: 'USER_SYNC_FAILED',
       });
       return;
     }
@@ -187,6 +189,7 @@ export const authenticateToken = async (
     res.status(403).json({
       success: false,
       error: 'Invalid token',
+      code: 'INVALID_TOKEN',
     });
   }
 };

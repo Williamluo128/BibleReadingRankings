@@ -63,7 +63,10 @@ export class AuthAPI {
 
     if (!response.ok || !body.success || !body.data?.user) {
       const err = new Error(body.error || `Auth failed with status ${response.status}`);
-      (err as Error & { response?: { status: number } }).response = { status: response.status };
+      (err as Error & { response?: { status: number; code?: string } }).response = {
+        status: response.status,
+        code: (body as { code?: string }).code,
+      };
       throw err;
     }
 

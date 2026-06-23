@@ -8,11 +8,27 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  hasHydrated: boolean;
   signInWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
-  syncUserFromSession: (accessToken: string) => Promise<{ ok: boolean; authFailed: boolean }>;
+  syncUserFromSession: (accessToken: string) => Promise<{ ok: boolean; authFailed: boolean; status?: number; error?: string }>;
   setUser: (user: User | null) => void;
+}
+
+function waitForAuthHydration(): Promise<void> {
+  if (useAuthStore.getState().hasHydrated) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    const unsubscribe = useAuthStore.subscribe((state) => {
+      if (state.hasHydrated) {
+        unsubscribe();
+        resolve();
+      }
+    });
+  });
 }
 
 function isAuthFailure(error: unknown): boolean {
@@ -26,6 +42,7 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       isAuthenticated: false,
       isLoading: true,
+      hasHydrated: false,
 
       signInWithGoogle: async () => {
         set({ isLoading: true });
@@ -63,7 +80,7 @@ export const useAuthStore = create<AuthState>()(
       syncUserFromSession: async (accessToken: string) => {
         const token = accessToken?.trim();
         if (!token) {
-          return { ok: false, authFailed: false };
+          return { ok: false, authFailed: false, error: 'empty_token' };
         }
 
         set({ isLoading: true });
@@ -74,15 +91,26 @@ export const useAuthStore = create<AuthState>()(
             isAuthenticated: true,
             isLoading: false,
           });
+          // #region agent log
+          fetch('http://127.0.0.1:7909/ingest/24def34c-6315-45bf-a5d3-0f76b2a3ef88',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ce6c75'},body:JSON.stringify({sessionId:'ce6c75',location:'auth.store.ts:syncUserFromSession',message:'sync ok',data:{userId:user.id},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
           return { ok: true, authFailed: false };
         } catch (error) {
           console.error('Failed to sync user from session:', error);
+          const status = (error as { response?: { status?: number; code?: string } })?.response?.status;
+          const code = (error as { response?: { status?: number; code?: string } })?.response?.code;
+          const message = error instanceof Error ? error.message : 'unknown';
+          // #region agent log
+          fetch('http://127.0.0.1:7909/ingest/24def34c-6315-45bf-a5d3-0f76b2a3ef88',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'ce6c75'},body:JSON.stringify({sessionId:'ce6c75',location:'auth.store.ts:syncUserFromSession',message:'sync failed',data:{status,code,message},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
           set({ isLoading: false });
-          return { ok: false, authFailed: isAuthFailure(error) };
+          return { ok: false, authFailed: isAuthFailure(error), status, error: code ? `${code}: ${message}` : message };
         }
       },
 
       checkAuth: async () => {
+        await waitForAuthHydration();
+
         const { data: { session } } = await supabase.auth.getSession();
 
         if (!session?.access_token) {
@@ -129,6 +157,10 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+useAuthStore.persist.onFinishHydration(() => {
+  useAuthStore.setState({ hasHydrated: true });
+});
 
 supabase.auth.onAuthStateChange((event) => {
   if (event === 'SIGNED_OUT') {
