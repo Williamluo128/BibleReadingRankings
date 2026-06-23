@@ -6,6 +6,29 @@ import { env, ensureEnv } from '@/config/env';
 import { getSupabaseAdmin } from '@/lib/supabase-admin';
 import type { User } from '@bible-rankings/shared';
 
+function extractBearerToken(authHeader: string | undefined): string | null {
+  if (!authHeader) {
+    return null;
+  }
+
+  let token = authHeader.trim();
+  if (!/^bearer\s+/i.test(token)) {
+    return null;
+  }
+
+  token = token.replace(/^bearer\s+/i, '').trim();
+  while (/^bearer\s+/i.test(token)) {
+    token = token.replace(/^bearer\s+/i, '').trim();
+  }
+
+  return token || null;
+}
+
+function isJwtFormat(token: string): boolean {
+  const parts = token.split('.');
+  return parts.length === 3 && parts.every((part) => part.length > 0);
+}
+
 declare global {
   namespace Express {
     interface Request {
@@ -156,7 +179,7 @@ export const authenticateToken = async (
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = extractBearerToken(authHeader);
 
     if (!token) {
       res.status(401).json({
@@ -167,17 +190,33 @@ export const authenticateToken = async (
       return;
     }
 
+    if (!isJwtFormat(token)) {
+      console.warn('[auth] malformed token', {
+        segments: token.split('.').length,
+        length: token.length,
+        prefix: token.slice(0, 6),
+      });
+      res.status(401).json({
+        success: false,
+        error: 'Access token is malformed',
+        code: 'MALFORMED_TOKEN',
+      });
+      return;
+    }
+
     const info = await verifySupabaseToken(token);
 
     let user: User;
     try {
       user = await AuthService.upsertUserFromSupabase(info);
     } catch (dbError) {
-      console.error('[auth] 用户同步失败:', dbError);
+      const prismaCode = (dbError as { code?: string })?.code;
+      console.error('[auth] 用户同步失败:', prismaCode ?? dbError);
       res.status(500).json({
         success: false,
         error: 'Failed to sync user profile',
         code: 'USER_SYNC_FAILED',
+        detail: prismaCode,
       });
       return;
     }
@@ -201,9 +240,9 @@ export const optionalAuth = async (
 ): Promise<void> => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = extractBearerToken(authHeader);
 
-    if (token) {
+    if (token && isJwtFormat(token)) {
       const info = await verifySupabaseToken(token);
       const user = await AuthService.upsertUserFromSupabase(info);
       if (user) {

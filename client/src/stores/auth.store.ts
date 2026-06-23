@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { User } from '@bible-rankings/shared';
 import { supabase } from '@/lib/supabase';
 import { AuthAPI } from '@/services/api';
+import { isJwtFormat, normalizeAccessToken } from '@/lib/auth-token';
 
 interface AuthState {
   user: User | null;
@@ -78,9 +79,9 @@ export const useAuthStore = create<AuthState>()(
       },
 
       syncUserFromSession: async (accessToken: string) => {
-        const token = accessToken?.trim();
-        if (!token) {
-          return { ok: false, authFailed: false, error: 'empty_token' };
+        const token = normalizeAccessToken(accessToken);
+        if (!token || !isJwtFormat(token)) {
+          return { ok: false, authFailed: false, error: 'malformed_token' };
         }
 
         set({ isLoading: true });
@@ -114,6 +115,19 @@ export const useAuthStore = create<AuthState>()(
         const { user, isAuthenticated } = get();
         const { data: { session } } = await supabase.auth.getSession();
 
+        if (session?.access_token) {
+          const sessionToken = normalizeAccessToken(session.access_token);
+          if (!isJwtFormat(sessionToken)) {
+            await supabase.auth.signOut();
+            set({
+              user: null,
+              isAuthenticated: false,
+              isLoading: false,
+            });
+            return;
+          }
+        }
+
         if (!session?.access_token) {
           if (isAuthenticated && user) {
             // OAuth 刚完成时 Supabase session 可能尚未可读,保留已同步的 zustand 状态
@@ -136,7 +150,7 @@ export const useAuthStore = create<AuthState>()(
           return;
         }
 
-        const result = await get().syncUserFromSession(session.access_token);
+        const result = await get().syncUserFromSession(normalizeAccessToken(session.access_token));
         if (!result.ok && result.authFailed) {
           await supabase.auth.signOut();
           set({

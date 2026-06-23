@@ -72,6 +72,23 @@ export class AuthService {
       return toUser(updated);
     }
 
+    // 兼容旧账号:邮箱已存在但 supabaseUid 未绑定(Google 首次登录)
+    const existingByEmail = await prisma.user.findUnique({
+      where: { email: info.email },
+    });
+
+    if (existingByEmail) {
+      const updated = await prisma.user.update({
+        where: { id: existingByEmail.id },
+        data: {
+          supabaseUid: info.sub,
+          avatarUrl: info.avatarUrl ?? existingByEmail.avatarUrl,
+          role: isAdmin ? 'SUPER_ADMIN' : existingByEmail.role,
+        },
+      });
+      return toUser(updated);
+    }
+
     const username = await this.generateUniqueUsername(baseUsername);
     const created = await prisma.user.create({
       data: {

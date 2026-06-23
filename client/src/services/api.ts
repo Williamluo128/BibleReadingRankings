@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { supabase } from '@/lib/supabase';
+import { isJwtFormat, normalizeAccessToken } from '@/lib/auth-token';
 import type { ApiResponse, User } from '@bible-rankings/shared';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
@@ -12,11 +13,12 @@ export const api = axios.create({
 });
 
 async function resolveAccessToken(explicitToken?: string): Promise<string | null> {
-  const token = explicitToken?.trim();
+  const token = explicitToken ? normalizeAccessToken(explicitToken) : null;
   if (token) return token;
 
   const { data: { session } } = await supabase.auth.getSession();
-  return session?.access_token ?? null;
+  const accessToken = session?.access_token ? normalizeAccessToken(session.access_token) : null;
+  return accessToken && isJwtFormat(accessToken) ? accessToken : null;
 }
 
 api.interceptors.request.use(async (config) => {
@@ -51,9 +53,9 @@ api.interceptors.response.use(
 
 export class AuthAPI {
   static async getCurrentUser(accessToken: string): Promise<User> {
-    const token = accessToken.trim();
-    if (!token) {
-      throw new Error('No access token available');
+    const token = normalizeAccessToken(accessToken);
+    if (!token || !isJwtFormat(token)) {
+      throw new Error('Access token is malformed');
     }
 
     const response = await fetch(`${API_BASE_URL}/auth/me`, {

@@ -47,7 +47,8 @@ async function probeAuthConfig(): Promise<{
   }
 
   try {
-    const { error } = await getSupabaseAdmin().auth.getUser('invalid-token-for-probe');
+    const probeJwt = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJwcm9iZSJ9.invalid';
+    const { error } = await getSupabaseAdmin().auth.getUser(probeJwt);
     serviceRoleOk = !!error && !/invalid api key/i.test(error.message);
   } catch {
     serviceRoleOk = false;

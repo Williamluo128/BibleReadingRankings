@@ -2,13 +2,30 @@ import React from 'react';
 import { useAuthStore } from '@/stores/auth.store';
 import { Button } from '@/components/ui/Button';
 
+function readAuthDebugLast(): string | null {
+  try {
+    const raw = sessionStorage.getItem('auth-debug-last');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { step?: string; reason?: string; error?: string; path?: string };
+    return [parsed.step, parsed.reason, parsed.error, parsed.path].filter(Boolean).join(' · ');
+  } catch {
+    return null;
+  }
+}
+
 export const LoginPage: React.FC = () => {
   const { signInWithGoogle, isLoading } = useAuthStore();
   const [error, setError] = React.useState<string | null>(null);
+  const [lastAuthDebug] = React.useState<string | null>(() => readAuthDebugLast());
 
   const handleGoogleLogin = async () => {
     setError(null);
     try {
+      for (const key of Object.keys(sessionStorage)) {
+        if (key.startsWith('oauth_done_') || key.startsWith('oauth_processing_')) {
+          sessionStorage.removeItem(key);
+        }
+      }
       await signInWithGoogle();
     } catch (err: any) {
       setError(err.message || '登录失败，请重试');
@@ -27,6 +44,12 @@ export const LoginPage: React.FC = () => {
         {error && (
           <div className="mb-8 border-l-2 border-red-500 pl-4 py-2 text-sm text-red-600">
             {error}
+          </div>
+        )}
+
+        {lastAuthDebug && !error && (
+          <div className="mb-8 border-l-2 border-amber-400 pl-4 py-2 text-xs text-amber-700">
+            上次登录诊断: {lastAuthDebug}
           </div>
         )}
 
