@@ -7,7 +7,11 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Minimalist primary palette - Neutral grays
+        bone: '#fbfbfa',
+        surface: '#ffffff',
+        ink: '#111111',
+        muted: '#787774',
+        'border-warm': '#eaeaea',
         primary: {
           50: '#fafafa',
           100: '#f5f5f5',
@@ -20,7 +24,6 @@ export default {
           800: '#262626',
           900: '#171717',
         },
-        // Accent color - Single blue for links/actions
         accent: {
           50: '#eff6ff',
           100: '#dbeafe',
@@ -33,7 +36,6 @@ export default {
           800: '#1e40af',
           900: '#1e3a8a',
         },
-        // Keep secondary for compatibility but map to grays or accents if needed
         secondary: {
           50: '#f8fafc',
           100: '#f1f5f9',
@@ -49,9 +51,17 @@ export default {
         },
       },
       fontFamily: {
-        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
-        serif: ['Merriweather', 'Georgia', 'serif'], // For Bible text
-        mono: ['JetBrains Mono', 'Consolas', 'monospace'],
+        sans: [
+          'PingFang SC',
+          'Hiragino Sans GB',
+          'Microsoft YaHei',
+          'SF Pro Display',
+          'Helvetica Neue',
+          'system-ui',
+          'sans-serif',
+        ],
+        serif: ['Merriweather', 'Georgia', 'serif'],
+        mono: ['JetBrains Mono', 'SF Mono', 'Consolas', 'monospace'],
       },
       letterSpacing: {
         tighter: '-0.02em',

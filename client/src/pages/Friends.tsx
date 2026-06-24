@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useFriendshipStore } from '@/stores/friendship.store';
-import { Navigation } from '@/components/Navigation';
+import { PageLayout } from '@/components/PageLayout';
+import { PageShell } from '@/components/PageShell';
 import { useAuthStore } from '@/stores/auth.store';
 
 export const FriendsPage: React.FC = () => {
@@ -70,9 +71,8 @@ export const FriendsPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <Navigation />
-      <div className="max-w-4xl mx-auto py-12 px-8">
+    <PageLayout>
+      <PageShell>
         {/* Header - Minimalist */}
         <div className="mb-12 flex flex-col md:flex-row justify-between items-end border-b border-gray-100 pb-8">
           <div>
@@ -277,7 +277,7 @@ export const FriendsPage: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </PageShell>
+    </PageLayout>
   );
 };

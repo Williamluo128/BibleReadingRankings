@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useLeaderboardStore } from '@/stores/leaderboard.store';
 import { useAuthStore } from '@/stores/auth.store';
-import { Navigation } from '@/components/Navigation';
+import { PageLayout } from '@/components/PageLayout';
+import { PageShell } from '@/components/PageShell';
 import type { LeaderboardPeriod } from '@/services/leaderboard.api';
 
 export const LeaderboardPage: React.FC = () => {
@@ -62,14 +63,12 @@ export const LeaderboardPage: React.FC = () => {
   const currentLeaderboard = activeTab === 'global' ? globalLeaderboard : friendsLeaderboard;
 
   return (
-    <div className="min-h-screen bg-white">
-      <Navigation />
-      <div className="max-w-5xl mx-auto py-12 px-8">
-        {/* Header - Minimalist */}
-        <div className="mb-16 text-center">
-          <h1 className="text-4xl font-light text-gray-900 mb-4 tracking-tight">阅读排行榜</h1>
-          <p className="text-gray-500 font-light">与朋友们比较阅读进度，激励彼此成长</p>
-        </div>
+    <PageLayout>
+      <PageShell>
+        <header className="mb-16 max-w-2xl">
+          <h1 className="text-4xl font-normal text-ink mb-4 tracking-tight">阅读排行榜</h1>
+          <p className="text-muted font-light">与朋友们比较阅读进度</p>
+        </header>
 
         {/* Error Message */}
         {error && (
@@ -83,23 +82,23 @@ export const LeaderboardPage: React.FC = () => {
 
         {/* User Rank - Minimalist Stat Row */}
         {userRank && (
-          <div className="mb-16 border-y border-gray-100 py-8">
+          <div className="mb-16 border-y border-border-warm py-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
               <div>
-                <div className="text-3xl font-light text-gray-900 mb-1">#{userRank.rank}</div>
-                <div className="text-xs uppercase tracking-widest text-gray-400">当前排名</div>
+                <div className="text-3xl stat-value mb-1">#{userRank.rank}</div>
+                <div className="text-xs uppercase tracking-widest text-muted">当前排名</div>
               </div>
               <div>
-                <div className="text-3xl font-light text-gray-900 mb-1">{userRank.totalVerses}</div>
-                <div className="text-xs uppercase tracking-widest text-gray-400">阅读节数</div>
+                <div className="text-3xl stat-value mb-1">{userRank.totalVerses}</div>
+                <div className="text-xs uppercase tracking-widest text-muted">阅读节数</div>
               </div>
               <div>
-                <div className="text-3xl font-light text-gray-900 mb-1">{userRank.totalDays}</div>
-                <div className="text-xs uppercase tracking-widest text-gray-400">阅读天数</div>
+                <div className="text-3xl stat-value mb-1">{userRank.totalDays}</div>
+                <div className="text-xs uppercase tracking-widest text-muted">阅读天数</div>
               </div>
               <div>
-                <div className="text-3xl font-light text-gray-900 mb-1">{userRank.averageVersesPerDay}</div>
-                <div className="text-xs uppercase tracking-widest text-gray-400">日均阅读</div>
+                <div className="text-3xl stat-value mb-1">{userRank.averageVersesPerDay}</div>
+                <div className="text-xs uppercase tracking-widest text-muted">日均阅读</div>
               </div>
             </div>
           </div>
@@ -209,7 +208,7 @@ export const LeaderboardPage: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </PageShell>
+    </PageLayout>
   );
 };

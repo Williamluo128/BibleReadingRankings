@@ -17,7 +17,7 @@ export const Button: React.FC<ButtonProps> = ({
   children,
   ...props
 }) => {
-  const baseClasses = 'inline-flex items-center justify-center transition-all focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed';
+  const baseClasses = 'inline-flex items-center justify-center transition-all disabled:opacity-50 disabled:cursor-not-allowed focus-ring';
 
   const variantClasses = {
     primary: 'btn-minimal-primary',

@@ -50,12 +50,12 @@ export const ReadingHabitSummary: React.FC<ReadingHabitSummaryProps> = ({ trends
   ];
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-100">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border-warm">
       {cards.map((card) => (
-        <div key={card.label} className="bg-white p-6">
-          <div className="text-xs uppercase tracking-widest text-gray-400 mb-2">{card.label}</div>
-          <div className="text-2xl font-light text-gray-900 mb-1">{card.value}</div>
-          <div className="text-xs text-gray-500">{card.hint}</div>
+        <div key={card.label} className="bg-surface p-6">
+          <div className="text-xs uppercase tracking-widest text-muted mb-2">{card.label}</div>
+          <div className="text-2xl stat-value mb-1">{card.value}</div>
+          <div className="text-xs text-muted">{card.hint}</div>
         </div>
       ))}
     </div>

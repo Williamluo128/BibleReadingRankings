@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Navigation } from '@/components/Navigation';
+import { PageLayout } from '@/components/PageLayout';
+import { PageShell } from '@/components/PageShell';
 import { useAuthStore } from '@/stores/auth.store';
 import { Button } from '@/components/ui/Button';
 import { api } from '@/services/api';
@@ -126,37 +127,32 @@ export const AdminPage: React.FC = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900">请先登录</h1>
+      <PageLayout>
+        <PageShell>
+          <div className="text-center py-24">
+            <h1 className="text-2xl font-normal text-ink">请先登录</h1>
           </div>
-        </div>
-      </div>
+        </PageShell>
+      </PageLayout>
     );
   }
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900">访问被拒绝</h1>
-            <p className="mt-2 text-gray-600">您没有访问管理界面的权限</p>
+      <PageLayout>
+        <PageShell>
+          <div className="text-center py-24">
+            <h1 className="text-2xl font-normal text-ink">访问被拒绝</h1>
+            <p className="mt-2 text-muted">您没有访问管理界面的权限</p>
           </div>
-        </div>
-      </div>
+        </PageShell>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navigation />
-      
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
+    <PageLayout>
+      <PageShell>
           <h1 className="text-3xl font-bold text-gray-900 mb-8">系统管理</h1>
           
           {error && (
@@ -644,8 +640,7 @@ export const AdminPage: React.FC = () => {
               )}
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+      </PageShell>
+    </PageLayout>
   );
 };

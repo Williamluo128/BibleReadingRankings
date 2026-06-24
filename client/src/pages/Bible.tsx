@@ -4,7 +4,9 @@ import { BibleBookList } from '@/components/bible/BibleBookList';
 import { ChapterList } from '@/components/bible/ChapterList';
 import { BibleReader } from '@/components/bible/BibleReader';
 import { BibleNavigation } from '@/components/bible/BibleNavigation';
-import { Navigation } from '@/components/Navigation';
+import { BibleTopBar } from '@/components/bible/BibleTopBar';
+import { SiteFooter } from '@/components/SiteFooter';
+import { SHELL_WIDE } from '@/components/PageShell';
 import type { BibleBook, BibleVerse } from '@bible-rankings/shared';
 
 export const BiblePage: React.FC = () => {
@@ -16,7 +18,7 @@ export const BiblePage: React.FC = () => {
     selectBook,
     loadChapter,
     resetSelection,
-    isLoading
+    isLoading,
   } = useBibleStore();
 
   const handleBookSelect = async (book: BibleBook) => {
@@ -35,59 +37,35 @@ export const BiblePage: React.FC = () => {
   };
 
   const handleVerseRead = (verse: BibleVerse) => {
-    // TODO: Implement reading progress tracking
     console.log('Verse read:', verse);
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <Navigation />
+    <div className="min-h-screen bg-bone flex flex-col">
+      <BibleTopBar
+        bookName={currentBook?.nameCn}
+        chapterNumber={currentChapter?.chapterNumber}
+        onToggleSidebar={() => setShowSidebar((v) => !v)}
+      />
 
-      {/* Minimalist Header */}
-      <div className="border-b border-gray-100 bg-white sticky top-0 z-30">
-        <div className="max-w-7xl mx-auto px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center space-x-6">
-              <button
-                onClick={() => setShowSidebar(!showSidebar)}
-                className="text-gray-900 hover:text-gray-600 lg:hidden"
-              >
-                <span className="text-sm uppercase tracking-wider">目录</span>
-              </button>
-
-              {currentBook && currentChapter ? (
-                <div className="flex items-baseline space-x-4">
-                  <h2 className="text-xl font-light text-gray-900">
-                    {currentBook.nameCn}
-                  </h2>
-                  <span className="text-lg text-gray-400 font-light">
-                    第 {currentChapter.chapterNumber} 章
-                  </span>
-                </div>
-              ) : (
-                <span className="text-sm text-gray-500 tracking-wide">选择经文开始阅读</span>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-8 py-8">
+      <div className={`${SHELL_WIDE} mx-auto px-8 py-8 flex-1 w-full`}>
         <div className="flex gap-12">
-          {/* Sidebar - Minimalist */}
-          <div className={`
+          <div
+            className={`
             ${showSidebar ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0
-            fixed inset-y-0 left-0 z-40 w-80 bg-white border-r border-gray-100 
+            fixed inset-y-0 left-0 z-40 w-80 bg-surface border-r border-border-warm
             lg:static lg:block lg:w-72 lg:border-r-0 transition-transform duration-300 ease-in-out
-            overflow-y-auto
-          `}>
+            overflow-y-auto top-16 lg:top-auto
+          `}
+          >
             <div className="p-8 lg:p-0">
               {showSidebar && (
                 <div className="lg:hidden flex justify-between items-center mb-8">
                   <span className="text-sm font-bold uppercase tracking-widest">目录</span>
                   <button
                     onClick={() => setShowSidebar(false)}
-                    className="text-gray-400 hover:text-gray-900"
+                    className="text-muted hover:text-ink focus-ring"
+                    type="button"
                   >
                     关闭
                   </button>
@@ -95,16 +73,14 @@ export const BiblePage: React.FC = () => {
               )}
 
               <div className="space-y-8">
-                {/* Current Book and Chapters */}
                 {currentBook && (
                   <div className="space-y-6">
-                    <div className="flex items-center justify-between border-b border-gray-100 pb-4">
-                      <h3 className="text-lg font-medium text-gray-900">
-                        {currentBook.nameCn}
-                      </h3>
+                    <div className="flex items-center justify-between border-b border-border-warm pb-4">
+                      <h3 className="text-lg font-medium text-ink">{currentBook.nameCn}</h3>
                       <button
                         onClick={resetSelection}
-                        className="text-xs uppercase tracking-wider text-gray-500 hover:text-gray-900"
+                        className="text-xs uppercase tracking-wider text-muted hover:text-ink focus-ring"
+                        type="button"
                       >
                         更换
                       </button>
@@ -119,25 +95,20 @@ export const BiblePage: React.FC = () => {
                   </div>
                 )}
 
-                {/* Book Selection */}
                 {!currentBook && (
-                  <BibleBookList
-                    onBookSelect={handleBookSelect}
-                    selectedBookId={undefined}
-                  />
+                  <BibleBookList onBookSelect={handleBookSelect} selectedBookId={undefined} />
                 )}
               </div>
             </div>
           </div>
 
-          {/* Main Content - Minimalist */}
           <div className="flex-1 min-w-0">
             <div className="max-w-3xl mx-auto">
               <BibleReader onVerseRead={handleVerseRead} />
             </div>
 
             {currentBook && currentChapter && (
-              <div className="mt-12 border-t border-gray-100 pt-8">
+              <div className="mt-12 border-t border-border-warm pt-8">
                 <BibleNavigation onNavigate={handleNavigate} />
               </div>
             )}
@@ -145,13 +116,15 @@ export const BiblePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Sidebar Overlay */}
       {showSidebar && (
         <div
-          className="fixed inset-0 bg-white/45 backdrop-blur-[2px] z-30 lg:hidden"
+          className="fixed inset-0 bg-surface/45 backdrop-blur-[2px] z-30 lg:hidden top-16"
           onClick={() => setShowSidebar(false)}
+          aria-hidden
         />
       )}
+
+      <SiteFooter />
     </div>
   );
 };

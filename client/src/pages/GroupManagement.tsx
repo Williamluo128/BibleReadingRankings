@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Navigation } from '@/components/Navigation';
+import { PageLayout } from '@/components/PageLayout';
+import { PageShell } from '@/components/PageShell';
 import { useAuthStore } from '@/stores/auth.store';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -265,39 +266,35 @@ export const GroupManagementPage: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-            <p className="mt-2 text-gray-600">加载中...</p>
+      <PageLayout>
+        <PageShell>
+          <div className="text-center py-24">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-ink mx-auto" />
+            <p className="mt-4 text-muted">加载中…</p>
           </div>
-        </div>
-      </div>
+        </PageShell>
+      </PageLayout>
     );
   }
 
   if (!group) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navigation />
-        <div className="container mx-auto px-4 py-8">
-          <div className="text-center">
-            <h1 className="text-2xl font-bold text-gray-900">群组不存在</h1>
-            <Button onClick={() => navigate('/groups')} className="mt-4">
+      <PageLayout>
+        <PageShell>
+          <div className="text-center py-24">
+            <h1 className="text-2xl font-normal text-ink">群组不存在</h1>
+            <Button onClick={() => navigate('/groups')} className="mt-6">
               返回群组列表
             </Button>
           </div>
-        </div>
-      </div>
+        </PageShell>
+      </PageLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <Navigation />
-
-      <div className="max-w-5xl mx-auto py-12 px-8">
+    <PageLayout>
+      <PageShell>
         {/* Header - Minimalist */}
         <div className="mb-12 border-b border-gray-100 pb-8">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -810,7 +807,7 @@ export const GroupManagementPage: React.FC = () => {
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </PageShell>
+    </PageLayout>
   );
 };

@@ -23,7 +23,7 @@ const LogoMark: React.FC<{ className?: string }> = ({ className = '' }) => (
   <svg
     aria-hidden
     viewBox={LOGO_VIEWBOX}
-    className={`shrink-0 text-gray-900 fill-current ${className}`}
+      className={`shrink-0 text-ink fill-current ${className}`}
     style={{ aspectRatio: '1317.91 / 1823.96' }}
   >
     <path d="M442.4,1.34c-1.9.9-3.4,2.4-3.8,4-.8,3.3,2.6,26.8,6.6,45.1,6.6,30.8,17.4,60.3,36.8,101,29.5,61.8,40.7,94.7,46.5,136.5,2.6,18.3,3.1,62.1,1.1,80.5-3.3,29.3-10.2,55.1-20.5,77-18.5,39.3-41.1,53.9-88.6,57.4-9.1.7-84.9,1.1-215.2,1.1H4.1l-2,2.6c-2,2.6-2.1,3.8-2.1,38.6v35.9l2.5,2.5,2.5,2.5,217.7-.4c239.3-.3,223.7.1,249.2-6.3,40.8-10.1,75.5-34.4,98.8-68.9,44.1-65.4,57.2-182.5,31.7-284.6-8.1-32.5-15.5-51.9-44.4-116.4-21.9-48.9-28-66.1-32.5-92-1.5-8.3-3.1-14.5-4-15.5-2.2-2.2-74.3-2.7-79.1-.6Z" />
@@ -44,7 +44,7 @@ export const Logo: React.FC<LogoProps> = ({
   const { mark, text } = sizeClasses[size];
 
   const content = (
-    <span className={`inline-flex items-center gap-3 text-gray-900 ${className}`}>
+    <span className={`inline-flex items-center gap-3 text-ink ${className}`}>
       <LogoMark className={`${mark} w-auto`} />
       {showText ? (
         <span className={`${text} font-light tracking-tight`}>
