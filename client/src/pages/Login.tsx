@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuthStore } from '@/stores/auth.store';
 import { Button } from '@/components/ui/Button';
+import { Logo } from '@/components/Logo';
 
 export const LoginPage: React.FC = () => {
   const { signInWithGoogle, isLoading } = useAuthStore();
@@ -23,10 +24,9 @@ export const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="w-full max-w-md px-8">
-        {/* Logo */}
-        <h1 className="text-4xl font-light text-center mb-20 tracking-tight">
-          圣经阅读
-        </h1>
+        <div className="flex justify-center mb-16">
+          <Logo size="lg" className="flex-col gap-4" />
+        </div>
 
         {/* Error Message */}
         {error && (

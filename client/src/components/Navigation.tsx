@@ -1,13 +1,12 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
-import { Button } from '@/components/ui/Button';
+import { Logo } from '@/components/Logo';
 
 export const Navigation: React.FC = () => {
   const { user, logout } = useAuthStore();
   const location = useLocation();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const userMenuRef = useRef<HTMLDivElement>(null);
 
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -27,9 +26,7 @@ export const Navigation: React.FC = () => {
         <div className="flex justify-between items-center h-20">
           {/* Logo - Minimalist Text */}
           <div className="flex items-center">
-            <Link to="/" className="text-xl font-light tracking-tight text-gray-900 hover:text-gray-600 transition-colors">
-              圣经阅读
-            </Link>
+            <Logo size="sm" linkToHome />
           </div>
 
           {/* Navigation Links - Text Only */}
