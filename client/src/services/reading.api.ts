@@ -79,6 +79,11 @@ interface ProgressStatsResponse {
   };
 }
 
+interface AnalyticsDashboardResponse {
+  progress: ProgressStatsResponse;
+  dailyStats: Array<{ date: string; versesRead: number }>;
+}
+
 export class ReadingAPI {
   // 记录单个经文阅读
   static async recordVerse(verseId: string): Promise<ReadingRecord> {
@@ -144,6 +149,12 @@ export class ReadingAPI {
     return response.data.data!.heatmap;
   }
 
+  // 分析页统一数据（一次请求，前端本地计算趋势/热力图）
+  static async getAnalyticsDashboard(): Promise<AnalyticsDashboardResponse> {
+    const response = await api.get<ApiResponse<AnalyticsDashboardResponse>>('/reading/analytics');
+    return response.data.data!;
+  }
+
   // 获取阅读进度统计
   static async getProgressStats(): Promise<ProgressStatsResponse> {
     const response = await api.get<ApiResponse<ProgressStatsResponse>>('/reading/progress');
@@ -157,4 +168,5 @@ export type {
   HeatmapData,
   ProgressStatsResponse,
   TotalStatsResponse,
+  AnalyticsDashboardResponse,
 };

@@ -1,5 +1,17 @@
 import { prisma } from '@/config/database';
 import type { ReadingRecord, DailyStats } from '@bible-rankings/shared';
+import { getBibleMetadata, type BibleMetadata } from '@/services/bible-metadata.cache';
+
+interface DailyStatPoint {
+  date: string;
+  versesRead: number;
+}
+
+interface UserReadingAggregates {
+  readVerses: number;
+  readChapters: number;
+  byBook: Map<number, number>;
+}
 
 export class ReadingService {
   // 记录用户阅读的经文
@@ -227,17 +239,23 @@ export class ReadingService {
     });
 
     const today = new Date().toISOString().split('T')[0];
-    const todayStats = await prisma.dailyStats.findUnique({
-      where: {
-        userId_date: {
-          userId,
-          date: today,
+    const [todayStats, activeDays] = await Promise.all([
+      prisma.dailyStats.findUnique({
+        where: {
+          userId_date: {
+            userId,
+            date: today,
+          },
         },
-      },
-    });
+      }),
+      prisma.dailyStats.findMany({
+        where: { userId, versesRead: { gt: 0 } },
+        select: { date: true, versesRead: true },
+        orderBy: { date: 'asc' },
+      }),
+    ]);
 
-    // 计算当前连续阅读天数
-    const currentStreak = await this.calculateCurrentStreak(userId);
+    const { current: currentStreak } = this.computeStreaks(activeDays);
 
     return {
       totalVerses,
@@ -346,29 +364,48 @@ export class ReadingService {
 
   // 获取阅读进度统计
   static async getProgressStats(userId: string) {
-    const [books, totalChapters, totalVerses, readVersesCount, readChaptersRow, testamentRows, bookReadRows, chapterVerseGroups, chapters] = await Promise.all([
-      prisma.bibleBook.findMany({
-        select: { id: true, nameCn: true, testament: true },
-        orderBy: { bookOrder: 'asc' },
+    const [metadata, aggregates, dailyStats] = await Promise.all([
+      getBibleMetadata(),
+      this.getUserReadingAggregates(userId),
+      prisma.dailyStats.findMany({
+        where: { userId, versesRead: { gt: 0 } },
+        select: { date: true, versesRead: true },
+        orderBy: { date: 'asc' },
       }),
-      prisma.bibleChapter.count(),
-      prisma.bibleVerse.count(),
-      prisma.readingRecord.count({ where: { userId } }),
-      prisma.$queryRaw<[{ count: bigint }]>`
-        SELECT COUNT(DISTINCT bc.id) AS count
+    ]);
+
+    return this.buildProgressStats(metadata, aggregates, this.computeStreaks(dailyStats));
+  }
+
+  /**
+   * 分析页统一数据：一次请求返回进度 + 每日统计（前端本地算趋势/热力图）
+   */
+  static async getAnalyticsDashboard(userId: string) {
+    const [metadata, aggregates, dailyStats] = await Promise.all([
+      getBibleMetadata(),
+      this.getUserReadingAggregates(userId),
+      prisma.dailyStats.findMany({
+        where: { userId },
+        select: { date: true, versesRead: true },
+        orderBy: { date: 'asc' },
+      }),
+    ]);
+
+    const activeDays = dailyStats.filter((d) => d.versesRead > 0);
+    const progress = this.buildProgressStats(metadata, aggregates, this.computeStreaks(activeDays));
+
+    return { progress, dailyStats };
+  }
+
+  private static async getUserReadingAggregates(userId: string): Promise<UserReadingAggregates> {
+    const [summaryRow, bookRows] = await Promise.all([
+      prisma.$queryRaw<[{ read_verses: bigint; read_chapters: bigint }]>`
+        SELECT
+          COUNT(DISTINCT rr.verse_id)::bigint AS read_verses,
+          COUNT(DISTINCT bv.chapter_id)::bigint AS read_chapters
         FROM reading_records rr
         INNER JOIN bible_verses bv ON rr.verse_id = bv.id
-        INNER JOIN bible_chapters bc ON bv.chapter_id = bc.id
         WHERE rr.user_id = ${userId}
-      `,
-      prisma.$queryRaw<Array<{ testament: string; count: bigint }>>`
-        SELECT bb.testament, COUNT(*)::bigint AS count
-        FROM reading_records rr
-        INNER JOIN bible_verses bv ON rr.verse_id = bv.id
-        INNER JOIN bible_chapters bc ON bv.chapter_id = bc.id
-        INNER JOIN bible_books bb ON bc.book_id = bb.id
-        WHERE rr.user_id = ${userId}
-        GROUP BY bb.testament
       `,
       prisma.$queryRaw<Array<{ book_id: number; count: bigint }>>`
         SELECT bc.book_id, COUNT(*)::bigint AS count
@@ -378,58 +415,43 @@ export class ReadingService {
         WHERE rr.user_id = ${userId}
         GROUP BY bc.book_id
       `,
-      prisma.bibleVerse.groupBy({
-        by: ['chapterId'],
-        _count: { id: true },
-      }),
-      prisma.bibleChapter.findMany({
-        select: { id: true, bookId: true },
-      }),
     ]);
 
-    const readChapters = Number(readChaptersRow[0]?.count ?? 0);
-    const readByBook = new Map(bookReadRows.map((r) => [r.book_id, Number(r.count)]));
+    return {
+      readVerses: Number(summaryRow[0]?.read_verses ?? 0),
+      readChapters: Number(summaryRow[0]?.read_chapters ?? 0),
+      byBook: new Map(bookRows.map((r) => [r.book_id, Number(r.count)])),
+    };
+  }
 
+  private static buildProgressStats(
+    metadata: BibleMetadata,
+    aggregates: UserReadingAggregates,
+    streaks: { current: number; longest: number },
+  ) {
     let oldTestamentVerses = 0;
     let newTestamentVerses = 0;
-    for (const row of testamentRows) {
-      if (row.testament === 'OT' || row.testament === 'OLD') {
-        oldTestamentVerses += Number(row.count);
-      } else if (row.testament === 'NT' || row.testament === 'NEW') {
-        newTestamentVerses += Number(row.count);
+
+    const bookProgress = metadata.books.map((book) => {
+      const readBookVerses = aggregates.byBook.get(book.id) ?? 0;
+      if (book.testament === 'OT' || book.testament === 'OLD') {
+        oldTestamentVerses += readBookVerses;
+      } else if (book.testament === 'NT' || book.testament === 'NEW') {
+        newTestamentVerses += readBookVerses;
       }
-    }
-
-    const chapterVerseCount = new Map(chapterVerseGroups.map((item) => [item.chapterId, item._count.id]));
-    const bookToChapters = new Map<number, string[]>();
-    chapters.forEach((chapter) => {
-      const list = bookToChapters.get(chapter.bookId) ?? [];
-      list.push(chapter.id);
-      bookToChapters.set(chapter.bookId, list);
-    });
-
-    const bookProgress = books.map((book) => {
-      const chapterIds = bookToChapters.get(book.id) ?? [];
-      const totalBookVerses = chapterIds.reduce(
-        (sum, chapterId) => sum + (chapterVerseCount.get(chapterId) ?? 0),
-        0,
-      );
-      const readBookVerses = readByBook.get(book.id) ?? 0;
 
       return {
         bookId: book.id,
         bookName: book.nameCn,
         testament: book.testament,
-        totalVerses: totalBookVerses,
+        totalVerses: book.totalVerses,
         readVerses: readBookVerses,
-        progress: totalBookVerses > 0 ? (readBookVerses / totalBookVerses) * 100 : 0,
+        progress: book.totalVerses > 0 ? (readBookVerses / book.totalVerses) * 100 : 0,
       };
     });
 
-    const [currentStreak, longestStreak] = await Promise.all([
-      this.calculateCurrentStreak(userId),
-      this.calculateLongestStreak(userId),
-    ]);
+    const { totalChapters, totalVerses } = metadata;
+    const { readChapters, readVerses } = aggregates;
 
     return {
       overall: {
@@ -437,87 +459,48 @@ export class ReadingService {
         readChapters,
         chaptersProgress: totalChapters > 0 ? (readChapters / totalChapters) * 100 : 0,
         totalVerses,
-        readVerses: readVersesCount,
-        versesProgress: totalVerses > 0 ? (readVersesCount / totalVerses) * 100 : 0,
+        readVerses,
+        versesProgress: totalVerses > 0 ? (readVerses / totalVerses) * 100 : 0,
       },
       testament: {
         oldTestament: oldTestamentVerses,
         newTestament: newTestamentVerses,
       },
       books: bookProgress,
-      streaks: {
-        current: currentStreak,
-        longest: longestStreak,
-      },
+      streaks,
     };
   }
 
-  // 计算当前连续阅读天数
-  private static async calculateCurrentStreak(userId: string): Promise<number> {
-    const stats = await prisma.dailyStats.findMany({
-      where: {
-        userId,
-        versesRead: { gt: 0 },
-      },
-      orderBy: {
-        date: 'desc',
-      },
-    });
-
-    if (stats.length === 0) return 0;
-
-    let streak = 0;
-    const today = new Date().toISOString().split('T')[0];
-    let currentDate = new Date(today);
-
-    for (const stat of stats) {
-      const statDate = new Date(stat.date);
-      const expectedDate = new Date(currentDate);
-      expectedDate.setDate(expectedDate.getDate() - streak);
-
-      if (statDate.toISOString().split('T')[0] === expectedDate.toISOString().split('T')[0]) {
-        streak++;
-      } else {
-        break;
-      }
+  private static computeStreaks(activeDays: DailyStatPoint[]): { current: number; longest: number } {
+    if (activeDays.length === 0) {
+      return { current: 0, longest: 0 };
     }
 
-    return streak;
-  }
-
-  // 计算最长连续阅读天数
-  private static async calculateLongestStreak(userId: string): Promise<number> {
-    const stats = await prisma.dailyStats.findMany({
-      where: {
-        userId,
-        versesRead: { gt: 0 },
-      },
-      orderBy: {
-        date: 'asc',
-      },
-    });
-
-    if (stats.length === 0) return 0;
+    const dates = activeDays.map((d) => d.date).sort();
+    const activeSet = new Set(dates);
 
     let longestStreak = 1;
-    let currentStreak = 1;
-
-    for (let i = 1; i < stats.length; i++) {
-      const prevDate = new Date(stats[i - 1].date);
-      const currDate = new Date(stats[i].date);
-
-      const dayDiff = Math.floor(
-        (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24)
-      );
-
+    let run = 1;
+    for (let i = 1; i < dates.length; i++) {
+      const prev = new Date(`${dates[i - 1]}T00:00:00`);
+      const curr = new Date(`${dates[i]}T00:00:00`);
+      const dayDiff = Math.round((curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24));
       if (dayDiff === 1) {
-        currentStreak++;
-        longestStreak = Math.max(longestStreak, currentStreak);
+        run++;
+        longestStreak = Math.max(longestStreak, run);
       } else {
-        currentStreak = 1;
+        run = 1;
       }
     }
 
-    return longestStreak;
+    const today = new Date().toISOString().split('T')[0];
+    let currentStreak = 0;
+    const cursor = new Date(`${today}T00:00:00`);
+    while (activeSet.has(cursor.toISOString().split('T')[0])) {
+      currentStreak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    return { current: currentStreak, longest: longestStreak };
   }
 }

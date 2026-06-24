@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { env, ensureEnv } from './config/env';
 import { apiRoutes } from './routes';
 import { errorHandler, notFoundHandler } from './middleware/error.middleware';
+import { warmBibleMetadataCache } from './services/bible-metadata.cache';
 
 const app = express();
 
@@ -74,6 +75,7 @@ if (process.env.NODE_ENV !== 'production') {
     console.log(`🚀 Server running on port ${env.PORT}`);
     console.log(`📊 Environment: ${env.NODE_ENV}`);
     console.log(`🔗 API URL: http://localhost:${env.PORT}/api`);
+    warmBibleMetadataCache();
   });
 
   // Graceful shutdown

@@ -31,6 +31,9 @@ router.get('/trends', ReadingController.getReadingTrends);
 // GET /api/reading/heatmap - 获取阅读热力图数据
 router.get('/heatmap', ReadingController.getReadingHeatmap);
 
+// GET /api/reading/analytics - 分析页统一数据（进度 + 每日统计）
+router.get('/analytics', ReadingController.getAnalyticsDashboard);
+
 // GET /api/reading/progress - 获取阅读进度统计
 router.get('/progress', ReadingController.getProgressStats);
 

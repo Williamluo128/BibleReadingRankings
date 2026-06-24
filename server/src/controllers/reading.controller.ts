@@ -232,6 +232,29 @@ export class ReadingController {
   }
 
   // 获取阅读进度统计（旧约/新约比例等）
+  static async getAnalyticsDashboard(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user!.id;
+      const dashboard = await ReadingService.getAnalyticsDashboard(userId);
+
+      const response: ApiResponse = {
+        success: true,
+        data: dashboard,
+        message: 'Analytics dashboard retrieved successfully',
+      };
+
+      res.status(200).json(response);
+    } catch (error) {
+      const response: ApiResponse = {
+        success: false,
+        error: 'Failed to retrieve analytics dashboard',
+      };
+
+      res.status(500).json(response);
+    }
+  }
+
+  // 获取阅读进度统计（旧约/新约比例等）
   static async getProgressStats(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user!.id;

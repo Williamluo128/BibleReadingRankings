@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { Navigation } from '@/components/Navigation';
@@ -7,36 +7,23 @@ import { ReadingHeatmap } from '@/components/analytics/ReadingHeatmap';
 import { TestamentPieChart } from '@/components/analytics/TestamentPieChart';
 import { ProgressRing } from '@/components/analytics/ProgressRing';
 import { ReadingHabitSummary } from '@/components/analytics/ReadingHabitSummary';
-import { ReadingAPI, type ReadingTrendData, type HeatmapData, type ProgressStatsResponse } from '@/services/reading.api';
+import { ReadingAPI, type ProgressStatsResponse } from '@/services/reading.api';
+import { buildHeatmap, buildTrends, type DailyStatPoint } from '@/utils/analytics';
 
 type TrendPeriod = 30 | 90 | 180;
 type BookFilter = 'all' | 'OT' | 'NT';
 
+const currentYear = new Date().getFullYear();
+
 export const AnalyticsPage: React.FC = () => {
   const { user } = useAuthStore();
   const [isLoading, setIsLoading] = useState(true);
-  const [isTrendLoading, setIsTrendLoading] = useState(false);
-  const [trendData, setTrendData] = useState<ReadingTrendData[]>([]);
-  const [heatmapData, setHeatmapData] = useState<HeatmapData[]>([]);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [dailyStats, setDailyStats] = useState<DailyStatPoint[]>([]);
   const [progressStats, setProgressStats] = useState<ProgressStatsResponse | null>(null);
   const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>(30);
   const [bookFilter, setBookFilter] = useState<BookFilter>('all');
   const [showAllBooks, setShowAllBooks] = useState(false);
-  const skipTrendReload = useRef(true);
-
-  const loadBaseAnalytics = useCallback(async () => {
-    const [heatmap, progress] = await Promise.all([
-      ReadingAPI.getReadingHeatmap(new Date().getFullYear()),
-      ReadingAPI.getProgressStats(),
-    ]);
-    setHeatmapData(heatmap);
-    setProgressStats(progress);
-  }, []);
-
-  const loadTrends = useCallback(async (days: TrendPeriod) => {
-    const trends = await ReadingAPI.getReadingTrends(days);
-    setTrendData(trends);
-  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -44,30 +31,28 @@ export const AnalyticsPage: React.FC = () => {
     void (async () => {
       try {
         setIsLoading(true);
-        await Promise.all([loadBaseAnalytics(), loadTrends(trendPeriod)]);
+        setLoadError(null);
+        const { progress, dailyStats: stats } = await ReadingAPI.getAnalyticsDashboard();
+        setProgressStats(progress);
+        setDailyStats(stats);
       } catch (error) {
         console.error('Failed to load analytics data:', error);
+        setLoadError('加载分析数据失败，请稍后重试');
       } finally {
         setIsLoading(false);
-        skipTrendReload.current = false;
       }
     })();
-  }, [user, loadBaseAnalytics, loadTrends]);
+  }, [user]);
 
-  useEffect(() => {
-    if (!user || skipTrendReload.current) return;
+  const trendData = useMemo(
+    () => buildTrends(dailyStats, trendPeriod),
+    [dailyStats, trendPeriod],
+  );
 
-    void (async () => {
-      try {
-        setIsTrendLoading(true);
-        await loadTrends(trendPeriod);
-      } catch (error) {
-        console.error('Failed to load reading trends:', error);
-      } finally {
-        setIsTrendLoading(false);
-      }
-    })();
-  }, [user, trendPeriod, loadTrends]);
+  const heatmapData = useMemo(
+    () => buildHeatmap(dailyStats, currentYear),
+    [dailyStats],
+  );
 
   const filteredBooks = useMemo(() => {
     if (!progressStats) return [];
@@ -93,9 +78,17 @@ export const AnalyticsPage: React.FC = () => {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-24">
-            <div className="animate-pulse text-gray-300">加载中...</div>
+          <div className="space-y-20 animate-pulse">
+            <div className="h-40 bg-gray-50" />
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-gray-100">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="bg-white h-28" />
+              ))}
+            </div>
+            <div className="h-64 bg-gray-50" />
           </div>
+        ) : loadError ? (
+          <div className="text-center py-24 text-red-600">{loadError}</div>
         ) : (
           <div className="space-y-20">
             {progressStats && (
@@ -159,22 +152,16 @@ export const AnalyticsPage: React.FC = () => {
                 </div>
               </div>
               <div className="border border-gray-100 p-8">
-                {isTrendLoading ? (
-                  <div className="h-64 flex items-center justify-center text-gray-300 animate-pulse">
-                    更新趋势...
-                  </div>
-                ) : (
-                  <ReadingTrendChart data={trendData} />
-                )}
+                <ReadingTrendChart data={trendData} />
               </div>
             </section>
 
             <section>
               <h2 className="text-sm font-bold uppercase tracking-widest text-gray-900 mb-8">
-                {new Date().getFullYear()} 年阅读热力图
+                {currentYear} 年阅读热力图
               </h2>
               <div className="border border-gray-100 p-8">
-                <ReadingHeatmap data={heatmapData} year={new Date().getFullYear()} />
+                <ReadingHeatmap data={heatmapData} year={currentYear} />
               </div>
             </section>
 
