@@ -79,8 +79,17 @@ interface ProgressStatsResponse {
   };
 }
 
+interface AnalyticsSummary {
+  totalVerses: number;
+  totalDays: number;
+  todayVerses: number;
+  currentStreak: number;
+  versesProgress: number;
+  totalVersesInBible: number;
+}
+
 interface AnalyticsDashboardResponse {
-  progress: ProgressStatsResponse;
+  summary: AnalyticsSummary;
   dailyStats: Array<{ date: string; versesRead: number }>;
 }
 
@@ -169,4 +178,5 @@ export type {
   ProgressStatsResponse,
   TotalStatsResponse,
   AnalyticsDashboardResponse,
+  AnalyticsSummary,
 };

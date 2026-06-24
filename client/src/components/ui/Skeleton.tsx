@@ -39,33 +39,21 @@ export const HomeActivitySkeleton: React.FC = () => (
 );
 
 export const AnalyticsSkeleton: React.FC = () => (
-  <div className="space-y-20">
+  <div className="space-y-16">
     <section>
-      <Skeleton className="h-3 w-24 mb-8" />
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="flex flex-col items-center">
-            <Skeleton className="h-32 w-32 rounded-full" />
-            <Skeleton className="h-3 w-20 mt-4" />
-          </div>
-        ))}
-      </div>
-    </section>
-    <section>
-      <Skeleton className="h-3 w-28 mb-8" />
+      <div className="h-3 w-16 bg-border-warm/70 animate-pulse mb-8" />
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border-warm">
         {[0, 1, 2, 3].map((i) => (
-          <div key={i} className="bg-surface p-6 min-h-[112px]">
-            <Skeleton className="h-3 w-20 mb-4" />
-            <Skeleton className="h-8 w-24 mb-2" />
-            <Skeleton className="h-3 w-32" />
+          <div key={i} className="bg-surface p-6 min-h-[100px]">
+            <div className="h-3 w-16 bg-border-warm/70 animate-pulse mb-4" />
+            <div className="h-9 w-20 bg-border-warm/70 animate-pulse" />
           </div>
         ))}
       </div>
     </section>
     <section>
-      <Skeleton className="h-3 w-20 mb-8" />
-      <Skeleton className="h-64 w-full border border-border-warm" />
+      <div className="h-3 w-20 bg-border-warm/70 animate-pulse mb-8" />
+      <div className="h-48 w-full border border-border-warm bg-surface animate-pulse" />
     </section>
   </div>
 );

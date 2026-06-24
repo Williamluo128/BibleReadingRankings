@@ -1,261 +1,221 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
+import { useReadingStore } from '@/stores/reading.store';
 import { PageLayout } from '@/components/PageLayout';
 import { PageShell } from '@/components/PageShell';
-import { Reveal } from '@/components/Reveal';
 import { AnalyticsSkeleton } from '@/components/ui/Skeleton';
-import { ReadingTrendChart } from '@/components/analytics/ReadingTrendChart';
-import { ReadingHeatmap } from '@/components/analytics/ReadingHeatmap';
-import { TestamentPieChart } from '@/components/analytics/TestamentPieChart';
-import { ProgressRing } from '@/components/analytics/ProgressRing';
-import { ReadingHabitSummary } from '@/components/analytics/ReadingHabitSummary';
-import { ReadingAPI, type ProgressStatsResponse } from '@/services/reading.api';
-import { buildHeatmap, buildTrends, type DailyStatPoint } from '@/utils/analytics';
+import { SimpleDailyBars } from '@/components/analytics/SimpleDailyBars';
+import { ReadingAPI, type AnalyticsSummary } from '@/services/reading.api';
+import { buildTrends, type DailyStatPoint } from '@/utils/analytics';
 import { buildReadingInsight } from '@/utils/analytics-insight';
 
-type TrendPeriod = 30 | 90 | 180;
-type BookFilter = 'all' | 'OT' | 'NT';
+type TrendPeriod = 14 | 30;
 
-const currentYear = new Date().getFullYear();
+function mergeSummary(
+  cached: ReturnType<typeof useReadingStore.getState>['totalStats'],
+  remote: AnalyticsSummary | null,
+): AnalyticsSummary | null {
+  if (remote) return remote;
+  if (!cached) return null;
+
+  return {
+    totalVerses: cached.totalVerses,
+    totalDays: cached.totalDays,
+    todayVerses: cached.todayVerses,
+    currentStreak: cached.currentStreak,
+    versesProgress: 0,
+    totalVersesInBible: 0,
+  };
+}
 
 export const AnalyticsPage: React.FC = () => {
   const { user } = useAuthStore();
+  const { totalStats, loadTotalStats } = useReadingStore();
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [dailyStats, setDailyStats] = useState<DailyStatPoint[]>([]);
-  const [progressStats, setProgressStats] = useState<ProgressStatsResponse | null>(null);
-  const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>(30);
-  const [bookFilter, setBookFilter] = useState<BookFilter>('all');
-  const [showAllBooks, setShowAllBooks] = useState(false);
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [trendPeriod, setTrendPeriod] = useState<TrendPeriod>(14);
 
   useEffect(() => {
     if (!user) return;
+
+    void loadTotalStats();
+  }, [user, loadTotalStats]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let cancelled = false;
 
     void (async () => {
       try {
         setIsLoading(true);
         setLoadError(null);
-        const { progress, dailyStats: stats } = await ReadingAPI.getAnalyticsDashboard();
-        setProgressStats(progress);
-        setDailyStats(stats);
+        const data = await ReadingAPI.getAnalyticsDashboard();
+        if (cancelled) return;
+        setSummary(data.summary);
+        setDailyStats(data.dailyStats);
       } catch (error) {
         console.error('Failed to load analytics data:', error);
-        setLoadError('加载分析数据失败，请稍后重试');
+        if (!cancelled) {
+          setLoadError('加载分析数据失败，请稍后重试');
+        }
       } finally {
-        setIsLoading(false);
+        if (!cancelled) {
+          setIsLoading(false);
+        }
       }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [user]);
 
-  const trendData = useMemo(
-    () => buildTrends(dailyStats, trendPeriod),
-    [dailyStats, trendPeriod],
+  const displaySummary = useMemo(
+    () => mergeSummary(totalStats, summary),
+    [totalStats, summary],
   );
-
-  const heatmapData = useMemo(
-    () => buildHeatmap(dailyStats, currentYear),
-    [dailyStats],
-  );
-
-  const filteredBooks = useMemo(() => {
-    if (!progressStats) return [];
-
-    return progressStats.books
-      .filter((book) => {
-        if (bookFilter === 'all') return book.readVerses > 0;
-        return book.testament === bookFilter && book.readVerses > 0;
-      })
-      .sort((a, b) => b.progress - a.progress || a.bookId - b.bookId);
-  }, [progressStats, bookFilter]);
-
-  const visibleBooks = showAllBooks ? filteredBooks : filteredBooks.slice(0, 12);
 
   const insight = useMemo(
-    () => buildReadingInsight(dailyStats, progressStats),
-    [dailyStats, progressStats],
+    () => buildReadingInsight(dailyStats, displaySummary),
+    [dailyStats, displaySummary],
   );
+
+  const recentDays = useMemo(() => {
+    const trends = buildTrends(dailyStats, 7);
+    return [...trends].reverse();
+  }, [dailyStats]);
+
+  const showSkeleton = isLoading && !displaySummary;
 
   return (
     <PageLayout>
       <PageShell width="wide">
-        <Reveal>
-          <header className="mb-16 max-w-2xl">
-            <h1 className="text-4xl font-normal text-ink mb-4 tracking-tight">阅读分析</h1>
-            <p className="text-muted font-light leading-relaxed">{insight}</p>
-          </header>
-        </Reveal>
+        <header className="mb-12 max-w-2xl">
+          <h1 className="text-4xl font-normal text-ink mb-4 tracking-tight">阅读分析</h1>
+          <p className="text-muted font-light leading-relaxed">{insight}</p>
+        </header>
 
-        {isLoading ? (
+        {showSkeleton ? (
           <AnalyticsSkeleton />
-        ) : loadError ? (
+        ) : loadError && !displaySummary ? (
           <div className="text-center py-24 text-red-600">{loadError}</div>
-        ) : (
-          <div className="space-y-20">
-            {progressStats && (
-              <Reveal delayMs={60}>
+        ) : displaySummary ? (
+          <div className="space-y-16">
+            {loadError && (
+              <p className="text-sm text-red-600 border-l-2 border-red-500 pl-4">{loadError}</p>
+            )}
+
+            <section>
+              <h2 className="text-label mb-8">概览</h2>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-px bg-border-warm">
+                <div className="bg-surface p-6">
+                  <div className="text-xs uppercase tracking-widest text-muted mb-2">今日阅读</div>
+                  <div className="text-3xl stat-value">{displaySummary.todayVerses}</div>
+                  <div className="text-xs text-muted mt-1">节</div>
+                </div>
+                <div className="bg-surface p-6">
+                  <div className="text-xs uppercase tracking-widest text-muted mb-2">累计节数</div>
+                  <div className="text-3xl stat-value">{displaySummary.totalVerses}</div>
+                  <div className="text-xs text-muted mt-1">节</div>
+                </div>
+                <div className="bg-surface p-6">
+                  <div className="text-xs uppercase tracking-widest text-muted mb-2">阅读天数</div>
+                  <div className="text-3xl stat-value">{displaySummary.totalDays}</div>
+                  <div className="text-xs text-muted mt-1">天</div>
+                </div>
+                <div className="bg-surface p-6">
+                  <div className="text-xs uppercase tracking-widest text-muted mb-2">连续阅读</div>
+                  <div className="text-3xl stat-value">{displaySummary.currentStreak}</div>
+                  <div className="text-xs text-muted mt-1">天</div>
+                </div>
+              </div>
+            </section>
+
+            {displaySummary.versesProgress > 0 && (
               <section>
-                <h2 className="text-label mb-8">
-                  总体进度
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-                  <ProgressRing
-                    progress={progressStats.overall.versesProgress}
-                    label="经文进度"
-                    value={`${progressStats.overall.readVerses} / ${progressStats.overall.totalVerses}`}
-                  />
-                  <ProgressRing
-                    progress={progressStats.overall.chaptersProgress}
-                    label="章节进度"
-                    value={`${progressStats.overall.readChapters} / ${progressStats.overall.totalChapters}`}
-                  />
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="text-center">
-                      <div className="text-5xl stat-value mb-2">
-                        {progressStats.streaks.current}
-                      </div>
-                      <div className="text-xs uppercase tracking-widest text-muted mb-4">
-                        当前连续天数
-                      </div>
-                      <div className="text-muted text-sm">
-                        最长: {progressStats.streaks.longest} 天
-                      </div>
-                    </div>
+                <h2 className="text-label mb-4">全书进度</h2>
+                <div className="bg-surface border border-border-warm p-6">
+                  <div className="flex justify-between items-baseline mb-3">
+                    <span className="text-2xl stat-value">
+                      {displaySummary.versesProgress.toFixed(1)}%
+                    </span>
+                    <span className="text-sm text-muted">
+                      {displaySummary.totalVerses} / {displaySummary.totalVersesInBible} 节
+                    </span>
+                  </div>
+                  <div className="w-full bg-border-warm h-1.5">
+                    <div
+                      className="bg-ink h-1.5"
+                      style={{ width: `${Math.min(displaySummary.versesProgress, 100)}%` }}
+                    />
                   </div>
                 </div>
               </section>
-              </Reveal>
             )}
 
-            <Reveal delayMs={100}>
-            <section>
-              <h2 className="text-label mb-8">
-                阅读习惯摘要
-              </h2>
-              <ReadingHabitSummary trends={trendData} periodDays={trendPeriod} />
-            </section>
-            </Reveal>
-
-            <Reveal delayMs={140}>
             <section>
               <div className="flex justify-between items-center mb-8">
-                <h2 className="text-label">
-                  阅读趋势
-                </h2>
-                <div className="flex space-x-4">
-                  {([30, 90, 180] as TrendPeriod[]).map((days) => (
+                <h2 className="text-label">近期阅读</h2>
+                <div className="flex gap-4">
+                  {([14, 30] as TrendPeriod[]).map((days) => (
                     <button
                       key={days}
+                      type="button"
                       onClick={() => setTrendPeriod(days)}
-                      className={`text-sm transition-colors focus-ring ${trendPeriod === days
-                        ? 'text-ink font-medium'
-                        : 'text-muted hover:text-ink'
-                        }`}
+                      className={`text-sm transition-colors focus-ring ${
+                        trendPeriod === days
+                          ? 'text-ink font-medium'
+                          : 'text-muted hover:text-ink'
+                      }`}
                     >
                       {days} 天
                     </button>
                   ))}
                 </div>
               </div>
-              <div className="border border-border-warm p-8 bg-surface">
-                <ReadingTrendChart data={trendData} />
+              <div className="border border-border-warm p-6 bg-surface">
+                <SimpleDailyBars dailyStats={dailyStats} days={trendPeriod} />
               </div>
             </section>
-            </Reveal>
 
-            <Reveal delayMs={180}>
             <section>
-              <h2 className="text-label mb-8">
-                {currentYear} 年阅读热力图
-              </h2>
-              <div className="border border-border-warm p-8 bg-surface">
-                <ReadingHeatmap data={heatmapData} year={currentYear} />
+              <h2 className="text-label mb-8">最近 7 天</h2>
+              <div className="space-y-0">
+                {recentDays.map((day) => (
+                  <div
+                    key={day.date}
+                    className="flex items-center justify-between py-4 border-b border-border-warm"
+                  >
+                    <span className="text-ink">
+                      {new Date(`${day.date}T00:00:00`).toLocaleDateString('zh-CN', {
+                        month: 'long',
+                        day: 'numeric',
+                        weekday: 'short',
+                      })}
+                    </span>
+                    <span className="stat-value text-xl">
+                      {day.versesRead}{' '}
+                      <span className="text-sm text-muted font-normal">节</span>
+                    </span>
+                  </div>
+                ))}
               </div>
             </section>
-            </Reveal>
 
-            {progressStats && (
-              <Reveal delayMs={220}>
-              <section>
-                <h2 className="text-label mb-8">
-                  新旧约阅读分布
-                </h2>
-                <div className="border border-border-warm p-8 bg-surface">
-                  <TestamentPieChart
-                    oldTestament={progressStats.testament.oldTestament}
-                    newTestament={progressStats.testament.newTestament}
-                  />
-                </div>
-              </section>
-              </Reveal>
-            )}
-
-            {progressStats && filteredBooks.length > 0 && (
-              <Reveal delayMs={260}>
-              <section>
-                <div className="flex flex-wrap justify-between items-center gap-4 mb-8">
-                  <h2 className="text-label">
-                    书卷阅读进度
-                  </h2>
-                  <div className="flex space-x-4">
-                    {([
-                      ['all', '全部'],
-                      ['OT', '旧约'],
-                      ['NT', '新约'],
-                    ] as const).map(([value, label]) => (
-                      <button
-                        key={value}
-                        onClick={() => setBookFilter(value)}
-                        className={`text-sm transition-colors focus-ring ${bookFilter === value
-                          ? 'text-ink font-medium'
-                          : 'text-muted hover:text-ink'
-                          }`}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-border-warm">
-                  {visibleBooks.map((book) => (
-                    <Link
-                      key={book.bookId}
-                      to="/bible"
-                      className="bg-surface p-6 hover:bg-bone transition-colors block focus-ring"
-                    >
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-sm font-medium text-ink">
-                          {book.bookName}
-                        </span>
-                        <span className="text-xs text-muted stat-value">
-                          {book.progress.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="w-full bg-border-warm h-1">
-                        <div
-                          className="bg-ink h-1 transition-all duration-500"
-                          style={{ width: `${book.progress}%` }}
-                        />
-                      </div>
-                      <div className="text-xs text-muted mt-1">
-                        {book.readVerses} / {book.totalVerses} 节
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-                {filteredBooks.length > 12 && (
-                  <button
-                    onClick={() => setShowAllBooks((v) => !v)}
-                    className="mt-6 text-sm text-muted hover:text-ink transition-colors focus-ring"
-                  >
-                    {showAllBooks ? '收起' : `查看全部 ${filteredBooks.length} 卷`}
-                  </button>
-                )}
-              </section>
-              </Reveal>
-            )}
+            <section className="border-t border-border-warm pt-10">
+              <Link
+                to="/bible"
+                className="text-sm text-muted hover:text-ink transition-colors focus-ring"
+              >
+                继续阅读 →
+              </Link>
+            </section>
           </div>
-        )}
+        ) : null}
       </PageShell>
     </PageLayout>
   );

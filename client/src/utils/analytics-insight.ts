@@ -1,12 +1,24 @@
 import type { DailyStatPoint } from '@/utils/analytics';
-import type { ProgressStatsResponse } from '@/services/reading.api';
 import { buildTrends } from '@/utils/analytics';
+
+export interface AnalyticsSummary {
+  totalVerses: number;
+  totalDays: number;
+  todayVerses: number;
+  currentStreak: number;
+  versesProgress: number;
+  totalVersesInBible: number;
+}
 
 export function buildReadingInsight(
   dailyStats: DailyStatPoint[],
-  progress: ProgressStatsResponse | null,
+  summary: AnalyticsSummary | null,
 ): string {
-  if (!progress || dailyStats.length === 0) {
+  if (!summary) {
+    return '加载中…';
+  }
+
+  if (summary.totalVerses === 0) {
     return '开始阅读后，这里会显示你的习惯洞察。';
   }
 
@@ -17,8 +29,8 @@ export function buildReadingInsight(
   const prev7Total = prev7.reduce((sum, d) => sum + d.versesRead, 0);
   const weekDelta = last7Total - prev7Total;
 
-  const versesPct = progress.overall.versesProgress.toFixed(1);
-  const streak = progress.streaks.current;
+  const versesPct = summary.versesProgress.toFixed(1);
+  const streak = summary.currentStreak;
 
   if (weekDelta > 0) {
     return `近 7 天比前一周多读 ${weekDelta} 节；全书进度 ${versesPct}%，连续 ${streak} 天。`;

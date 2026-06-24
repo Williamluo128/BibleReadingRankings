@@ -13,6 +13,8 @@ import { SettingsPage } from '@/pages/Settings';
 import { AdminPage } from '@/pages/Admin';
 import { GroupManagementPage } from '@/pages/GroupManagement';
 import { AnalyticsPage } from '@/pages/Analytics';
+import { PrivacyPage } from '@/pages/Privacy';
+import { FeedbackPage } from '@/pages/Feedback';
 
 function AppRoutes() {
   const { isAuthenticated, isLoading, checkAuth, hasHydrated, user } = useAuthStore();
@@ -50,10 +52,9 @@ function AppRoutes() {
           element={loginElement}
         />
         {/* OAuth callback - Supabase redirects here after Google login */}
-        <Route
-          path="/auth/callback"
-          element={<AuthCallback />}
-        />
+        <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/privacy" element={<PrivacyPage />} />
+        <Route path="/feedback" element={<FeedbackPage />} />
 
         {/* Protected routes */}
         <Route

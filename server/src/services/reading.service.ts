@@ -227,35 +227,25 @@ export class ReadingService {
 
   // 获取用户总阅读统计
   static async getUserTotalStats(userId: string) {
-    const totalVerses = await prisma.readingRecord.count({
-      where: { userId },
-    });
-
-    const totalDays = await prisma.dailyStats.count({
-      where: {
-        userId,
-        versesRead: { gt: 0 } // 只计算有阅读记录的日子
-      },
-    });
-
     const today = new Date().toISOString().split('T')[0];
-    const [todayStats, activeDays] = await Promise.all([
+
+    const [totalVerses, totalDays, todayStats, recentActiveDays] = await Promise.all([
+      prisma.readingRecord.count({ where: { userId } }),
+      prisma.dailyStats.count({
+        where: { userId, versesRead: { gt: 0 } },
+      }),
       prisma.dailyStats.findUnique({
-        where: {
-          userId_date: {
-            userId,
-            date: today,
-          },
-        },
+        where: { userId_date: { userId, date: today } },
       }),
       prisma.dailyStats.findMany({
         where: { userId, versesRead: { gt: 0 } },
-        select: { date: true, versesRead: true },
-        orderBy: { date: 'asc' },
+        select: { date: true },
+        orderBy: { date: 'desc' },
+        take: 400,
       }),
     ]);
 
-    const { current: currentStreak } = this.computeStreaks(activeDays);
+    const currentStreak = this.computeCurrentStreak(recentActiveDays.map((d) => d.date));
 
     return {
       totalVerses,
@@ -378,23 +368,50 @@ export class ReadingService {
   }
 
   /**
-   * 分析页统一数据：一次请求返回进度 + 每日统计（前端本地算趋势/热力图）
+   * 分析页轻量数据：避免全表 JOIN，仅返回摘要 + 近 90 天每日统计
    */
   static async getAnalyticsDashboard(userId: string) {
-    const [metadata, aggregates, dailyStats] = await Promise.all([
-      getBibleMetadata(),
-      this.getUserReadingAggregates(userId),
-      prisma.dailyStats.findMany({
-        where: { userId },
-        select: { date: true, versesRead: true },
-        orderBy: { date: 'asc' },
-      }),
-    ]);
+    const today = new Date().toISOString().split('T')[0];
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 90);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
 
-    const activeDays = dailyStats.filter((d) => d.versesRead > 0);
-    const progress = this.buildProgressStats(metadata, aggregates, this.computeStreaks(activeDays));
+    const [metadata, totalVerses, totalDays, todayStats, dailyStats, recentActiveDays] =
+      await Promise.all([
+        getBibleMetadata(),
+        prisma.readingRecord.count({ where: { userId } }),
+        prisma.dailyStats.count({ where: { userId, versesRead: { gt: 0 } } }),
+        prisma.dailyStats.findUnique({
+          where: { userId_date: { userId, date: today } },
+        }),
+        prisma.dailyStats.findMany({
+          where: { userId, date: { gte: cutoffStr } },
+          select: { date: true, versesRead: true },
+          orderBy: { date: 'asc' },
+        }),
+        prisma.dailyStats.findMany({
+          where: { userId, versesRead: { gt: 0 } },
+          select: { date: true },
+          orderBy: { date: 'desc' },
+          take: 400,
+        }),
+      ]);
 
-    return { progress, dailyStats };
+    const currentStreak = this.computeCurrentStreak(recentActiveDays.map((d) => d.date));
+    const versesProgress =
+      metadata.totalVerses > 0 ? (totalVerses / metadata.totalVerses) * 100 : 0;
+
+    return {
+      summary: {
+        totalVerses,
+        totalDays,
+        todayVerses: todayStats?.versesRead ?? 0,
+        currentStreak,
+        versesProgress,
+        totalVersesInBible: metadata.totalVerses,
+      },
+      dailyStats,
+    };
   }
 
   private static async getUserReadingAggregates(userId: string): Promise<UserReadingAggregates> {
@@ -471,13 +488,28 @@ export class ReadingService {
     };
   }
 
+  private static computeCurrentStreak(activeDates: string[]): number {
+    if (activeDates.length === 0) return 0;
+
+    const activeSet = new Set(activeDates);
+    const today = new Date().toISOString().split('T')[0];
+    let currentStreak = 0;
+    const cursor = new Date(`${today}T00:00:00`);
+
+    while (activeSet.has(cursor.toISOString().split('T')[0])) {
+      currentStreak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    return currentStreak;
+  }
+
   private static computeStreaks(activeDays: DailyStatPoint[]): { current: number; longest: number } {
     if (activeDays.length === 0) {
       return { current: 0, longest: 0 };
     }
 
     const dates = activeDays.map((d) => d.date).sort();
-    const activeSet = new Set(dates);
 
     let longestStreak = 1;
     let run = 1;
@@ -493,13 +525,7 @@ export class ReadingService {
       }
     }
 
-    const today = new Date().toISOString().split('T')[0];
-    let currentStreak = 0;
-    const cursor = new Date(`${today}T00:00:00`);
-    while (activeSet.has(cursor.toISOString().split('T')[0])) {
-      currentStreak++;
-      cursor.setDate(cursor.getDate() - 1);
-    }
+    const currentStreak = this.computeCurrentStreak(dates);
 
     return { current: currentStreak, longest: longestStreak };
   }

@@ -1,7 +1,9 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth.store';
 import { Button } from '@/components/ui/Button';
 import { Logo } from '@/components/Logo';
+import { SiteFooter } from '@/components/SiteFooter';
 
 export const LoginPage: React.FC = () => {
   const { signInWithGoogle, isLoading } = useAuthStore();
@@ -22,8 +24,9 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-bone">
-      <div className="w-full max-w-md px-8">
+    <div className="min-h-screen flex flex-col bg-bone">
+      <div className="flex-1 flex items-center justify-center px-8 py-16">
+      <div className="w-full max-w-md">
         <div className="flex justify-center mb-16">
           <Logo size="lg" className="flex-col gap-4" />
         </div>
@@ -64,10 +67,15 @@ export const LoginPage: React.FC = () => {
           </span>
         </Button>
 
-        <p className="text-center mt-12 text-sm text-gray-400 font-light">
-          登录即表示您同意我们的使用条款和隐私政策
+        <p className="text-center mt-12 text-sm text-muted font-light">
+          登录即表示您同意我们的{' '}
+          <Link to="/privacy" className="text-ink hover:underline focus-ring">
+            隐私政策
+          </Link>
         </p>
       </div>
+      </div>
+      <SiteFooter />
     </div>
   );
 };

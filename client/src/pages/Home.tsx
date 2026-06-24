@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/Button';
 import { PageLayout } from '@/components/PageLayout';
 import { PageShell } from '@/components/PageShell';
 import { Reveal } from '@/components/Reveal';
+import { DailyQuote } from '@/components/DailyQuote';
 import { HomeActivitySkeleton, HomeStatsSkeleton } from '@/components/ui/Skeleton';
 
 export const HomePage: React.FC = () => {
@@ -34,6 +35,7 @@ export const HomePage: React.FC = () => {
                 ? `今天已读 ${totalStats?.todayVerses} 节，继续保持节奏。`
                 : '今天还没有阅读记录，从一段经文开始。'}
             </p>
+            <DailyQuote />
           </header>
         </Reveal>
 
