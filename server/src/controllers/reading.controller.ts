@@ -151,7 +151,7 @@ export class ReadingController {
   static async getReadStatus(req: Request, res: Response): Promise<void> {
     try {
       const userId = req.user!.id;
-      const { verseIds } = req.body;
+      const { verseIds, bookId } = req.body;
 
       if (!verseIds || !Array.isArray(verseIds)) {
         const response: ApiResponse = {
@@ -162,7 +162,13 @@ export class ReadingController {
         return;
       }
 
-      const readVerseIds = await ReadingService.getUserReadVerses(userId, verseIds);
+      const parsedBookId =
+        bookId != null && bookId !== '' ? parseInt(String(bookId), 10) : undefined;
+      const readVerseIds = await ReadingService.getUserReadVerses(
+        userId,
+        verseIds,
+        Number.isNaN(parsedBookId) ? undefined : parsedBookId,
+      );
 
       const response: ApiResponse = {
         success: true,
@@ -251,6 +257,57 @@ export class ReadingController {
       };
 
       res.status(500).json(response);
+    }
+  }
+
+  // 获取阅读进度统计（旧约/新约比例等）
+  static async getBookChapterProgress(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user!.id;
+      const bookId = parseInt(req.params.bookId, 10);
+
+      if (Number.isNaN(bookId)) {
+        res.status(400).json({ success: false, error: 'Invalid book ID' });
+        return;
+      }
+
+      const chapters = await ReadingService.getBookChapterProgress(userId, bookId);
+
+      res.status(200).json({
+        success: true,
+        data: { chapters },
+        message: 'Chapter progress retrieved successfully',
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve chapter progress',
+      });
+    }
+  }
+
+  static async resetBookProgress(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = req.user!.id;
+      const bookId = parseInt(req.params.bookId, 10);
+
+      if (Number.isNaN(bookId)) {
+        res.status(400).json({ success: false, error: 'Invalid book ID' });
+        return;
+      }
+
+      const result = await ReadingService.resetBookProgress(userId, bookId);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: 'Book reading progress reset successfully',
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to reset book progress';
+      const status =
+        message === 'Book not found' ? 404 : message === 'Book not fully completed' ? 400 : 500;
+      res.status(status).json({ success: false, error: message });
     }
   }
 

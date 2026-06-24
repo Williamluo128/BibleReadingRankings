@@ -34,6 +34,12 @@ router.get('/heatmap', ReadingController.getReadingHeatmap);
 // GET /api/reading/analytics - 分析页统一数据（进度 + 每日统计）
 router.get('/analytics', ReadingController.getAnalyticsDashboard);
 
+// GET /api/reading/books/:bookId/chapters/progress - 书卷章节阅读进度
+router.get('/books/:bookId/chapters/progress', ReadingController.getBookChapterProgress);
+
+// DELETE /api/reading/books/:bookId/progress - 重置书卷阅读记录
+router.delete('/books/:bookId/progress', ReadingController.resetBookProgress);
+
 // GET /api/reading/progress - 获取阅读进度统计
 router.get('/progress', ReadingController.getProgressStats);
 

@@ -8,7 +8,7 @@ interface BibleReaderProps {
 }
 
 export const BibleReader: React.FC<BibleReaderProps> = ({ onVerseRead }) => {
-  const { currentChapter, currentBook, language, isLoading, error } = useBibleStore();
+  const { currentChapter, currentBook, language, isLoading, error, loadChapterProgress } = useBibleStore();
   const {
     readVerses,
     markVerseAsRead,
@@ -23,13 +23,19 @@ export const BibleReader: React.FC<BibleReaderProps> = ({ onVerseRead }) => {
     void loadTotalStats();
   }, [loadTotalStats]);
 
-  // 当章节变化时，加载阅读状态
+  // 当章节变化时，加载阅读状态（按书卷重置时间过滤）
   useEffect(() => {
     if (currentChapter?.verses) {
-      const verseIds = currentChapter.verses.map(v => v.id);
-      loadReadStatus(verseIds);
+      const verseIds = currentChapter.verses.map((v) => v.id);
+      void loadReadStatus(verseIds, currentBook?.id);
     }
-  }, [currentChapter, loadReadStatus]);
+  }, [currentChapter, currentBook?.id, loadReadStatus]);
+
+  // 标记阅读后刷新章节进度
+  useEffect(() => {
+    if (!currentBook?.id) return;
+    void loadChapterProgress(currentBook.id);
+  }, [readVerses, currentBook?.id, loadChapterProgress]);
 
   const handleVerseClick = (verse: BibleVerse) => {
     const newSelected = new Set(selectedVerses);

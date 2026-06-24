@@ -93,6 +93,19 @@ interface AnalyticsDashboardResponse {
   dailyStats: Array<{ date: string; versesRead: number }>;
 }
 
+export type ChapterReadStatus = 'unread' | 'reading' | 'complete';
+
+interface ChapterProgressItem {
+  chapterNumber: number;
+  readCount: number;
+  total: number;
+  status: ChapterReadStatus;
+}
+
+interface BookChapterProgressResponse {
+  chapters: ChapterProgressItem[];
+}
+
 export class ReadingAPI {
   // 记录单个经文阅读
   static async recordVerse(verseId: string): Promise<ReadingRecord> {
@@ -134,9 +147,10 @@ export class ReadingAPI {
   }
 
   // 检查经文阅读状态
-  static async getReadStatus(verseIds: string[]): Promise<string[]> {
+  static async getReadStatus(verseIds: string[], bookId?: number): Promise<string[]> {
     const response = await api.post<ApiResponse<ReadStatusResponse>>('/reading/status', {
-      verseIds
+      verseIds,
+      ...(bookId != null ? { bookId } : {}),
     });
     return response.data.data!.readVerseIds;
   }
@@ -169,6 +183,21 @@ export class ReadingAPI {
     const response = await api.get<ApiResponse<ProgressStatsResponse>>('/reading/progress');
     return response.data.data!;
   }
+
+  // 获取书卷各章节阅读进度
+  static async getBookChapterProgress(bookId: number): Promise<ChapterProgressItem[]> {
+    const response = await api.get<ApiResponse<BookChapterProgressResponse>>(
+      `/reading/books/${bookId}/chapters/progress`,
+    );
+    return response.data.data!.chapters;
+  }
+
+  static async resetBookProgress(bookId: number): Promise<{ bookId: number; resetAt: string }> {
+    const response = await api.delete<ApiResponse<{ bookId: number; resetAt: string }>>(
+      `/reading/books/${bookId}/progress`,
+    );
+    return response.data.data!;
+  }
 }
 
 // 导出类型
@@ -179,4 +208,6 @@ export type {
   TotalStatsResponse,
   AnalyticsDashboardResponse,
   AnalyticsSummary,
+  ChapterReadStatus,
+  ChapterProgressItem,
 };

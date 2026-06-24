@@ -270,18 +270,31 @@ export class ReadingService {
   }
 
   // 获取用户已读经文列表（用于前端状态同步）
-  static async getUserReadVerses(userId: string, verseIds: string[]): Promise<string[]> {
+  static async getUserReadVerses(
+    userId: string,
+    verseIds: string[],
+    bookId?: number,
+  ): Promise<string[]> {
+    const resetAt = bookId != null ? await this.getBookResetAt(userId, bookId) : null;
+
     const records = await prisma.readingRecord.findMany({
       where: {
         userId,
         verseId: { in: verseIds },
+        ...(resetAt ? { readAt: { gt: resetAt } } : {}),
       },
-      select: {
-        verseId: true,
-      },
+      select: { verseId: true },
     });
 
-    return records.map(record => record.verseId);
+    return records.map((record) => record.verseId);
+  }
+
+  private static async getBookResetAt(userId: string, bookId: number): Promise<Date | null> {
+    const reset = await prisma.bookReadingReset.findUnique({
+      where: { userId_bookId: { userId, bookId } },
+      select: { resetAt: true },
+    });
+    return reset?.resetAt ?? null;
   }
 
   // 获取阅读趋势数据（用于折线图）
@@ -350,6 +363,72 @@ export class ReadingService {
     if (versesRead < 25) return 2;
     if (versesRead < 50) return 3;
     return 4;
+  }
+
+  // 获取某书卷各章节的阅读进度（未读 / 阅读中 / 已完成）
+  static async getBookChapterProgress(userId: string, bookId: number) {
+    const rows = await prisma.$queryRaw<
+      Array<{ chapter_number: number; verse_count: number; read_count: bigint }>
+    >`
+      SELECT
+        bc.chapter_number,
+        bc.verse_count,
+        COUNT(DISTINCT rr.verse_id)::bigint AS read_count
+      FROM bible_chapters bc
+      LEFT JOIN bible_verses bv ON bv.chapter_id = bc.id
+      LEFT JOIN book_reading_resets brr
+        ON brr.user_id = ${userId} AND brr.book_id = ${bookId}
+      LEFT JOIN reading_records rr
+        ON rr.verse_id = bv.id
+        AND rr.user_id = ${userId}
+        AND (brr.reset_at IS NULL OR rr.read_at > brr.reset_at)
+      WHERE bc.book_id = ${bookId}
+      GROUP BY bc.id, bc.chapter_number, bc.verse_count
+      ORDER BY bc.chapter_number ASC
+    `;
+
+    return rows.map((row) => {
+      const readCount = Number(row.read_count);
+      const total = row.verse_count;
+      let status: 'unread' | 'reading' | 'complete';
+      if (readCount === 0) {
+        status = 'unread';
+      } else if (readCount >= total) {
+        status = 'complete';
+      } else {
+        status = 'reading';
+      }
+
+      return {
+        chapterNumber: row.chapter_number,
+        readCount,
+        total,
+        status,
+      };
+    });
+  }
+
+  /** 重置书卷章节进度（仅书签展示），保留历史阅读记录与全局统计 */
+  static async resetBookProgress(userId: string, bookId: number) {
+    const book = await prisma.bibleBook.findUnique({ where: { id: bookId } });
+    if (!book) {
+      throw new Error('Book not found');
+    }
+
+    const progress = await this.getBookChapterProgress(userId, bookId);
+    const allComplete =
+      progress.length > 0 && progress.every((chapter) => chapter.status === 'complete');
+    if (!allComplete) {
+      throw new Error('Book not fully completed');
+    }
+
+    const reset = await prisma.bookReadingReset.upsert({
+      where: { userId_bookId: { userId, bookId } },
+      create: { userId, bookId, resetAt: new Date() },
+      update: { resetAt: new Date() },
+    });
+
+    return { bookId, resetAt: reset.resetAt.toISOString() };
   }
 
   // 获取阅读进度统计

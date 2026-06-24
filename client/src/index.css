@@ -10,6 +10,9 @@
     --color-ink: #111111;
     --color-muted: #787774;
     --color-border: #eaeaea;
+    --bookmark-complete-bg: #e7e7e6;
+    --bookmark-complete-border: #d0d0cf;
+    --bookmark-reading-border: #d8d8d7;
   }
 
   html {
@@ -121,6 +124,97 @@
 
   .text-label {
     @apply text-xs font-medium uppercase tracking-wide text-muted;
+  }
+
+  /* 阅读页章节：书签叠放，右侧压住左侧；悬停向左抽出并置顶 */
+  .chapter-bookmark-stack {
+    display: grid;
+    grid-template-columns: repeat(6, 1.75rem);
+    row-gap: 0.5rem;
+    overflow: visible;
+  }
+
+  @media (min-width: 640px) {
+    .chapter-bookmark-stack {
+      grid-template-columns: repeat(8, 1.75rem);
+    }
+  }
+
+  @media (min-width: 768px) {
+    .chapter-bookmark-stack {
+      grid-template-columns: repeat(10, 1.75rem);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .chapter-bookmark-stack {
+      grid-template-columns: repeat(12, 1.75rem);
+    }
+  }
+
+  .chapter-bookmark {
+    @apply relative isolate w-10 h-11 shrink-0 text-sm font-medium tabular-nums;
+    @apply bg-surface text-muted;
+    @apply rounded-t-md rounded-b-sm;
+    @apply translate-x-0;
+    @apply transition-[transform,box-shadow,background-color,color,border-color,border-width] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)];
+    @apply focus-ring;
+    border-width: 1px;
+    border-style: solid;
+    border-color: var(--color-border);
+    border-right-width: 0;
+  }
+
+  .chapter-bookmark--reading {
+    @apply bg-bone text-ink;
+    border-color: var(--bookmark-reading-border);
+    border-right-width: 0;
+  }
+
+  .chapter-bookmark--complete {
+    @apply text-ink;
+    background-color: var(--bookmark-complete-bg);
+    border-color: var(--bookmark-complete-border);
+    border-right-width: 0;
+  }
+
+  .chapter-bookmark--legend {
+    @apply pointer-events-none w-4 h-4 shrink-0 !translate-x-0 border-r;
+    margin-right: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .chapter-bookmark:hover:not(.chapter-bookmark--selected) {
+    z-index: 2000 !important;
+    @apply -translate-x-2.5 text-ink;
+    border-color: var(--color-border);
+    border-right-width: 1px;
+    box-shadow: -4px 2px 10px rgba(17, 17, 17, 0.08);
+  }
+
+  .chapter-bookmark--selected {
+    @apply bg-ink text-surface;
+    border-color: var(--color-ink);
+    border-right-width: 0;
+  }
+
+  .chapter-bookmark--selected:hover {
+    z-index: 2000 !important;
+    @apply -translate-x-2.5 text-surface bg-ink;
+    border-color: var(--color-ink);
+    border-right-width: 1px;
+    box-shadow: -4px 2px 10px rgba(17, 17, 17, 0.14);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chapter-bookmark {
+      @apply transition-none;
+    }
+
+    .chapter-bookmark:hover:not(.chapter-bookmark--selected),
+    .chapter-bookmark--selected:hover {
+      @apply translate-x-0;
+    }
   }
 }
 

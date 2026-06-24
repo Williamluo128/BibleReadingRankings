@@ -1,12 +1,14 @@
 import { create } from 'zustand';
 import type { BibleBook, BibleChapter, BibleVerse } from '@bible-rankings/shared';
 import { BibleAPI } from '@/services/bible.api';
+import { ReadingAPI, type ChapterReadStatus } from '@/services/reading.api';
 
 interface BibleState {
   books: BibleBook[];
   currentBook: BibleBook | null;
   currentChapter: (BibleChapter & { verses: BibleVerse[] }) | null;
   chapters: BibleChapter[];
+  chapterProgress: Record<number, ChapterReadStatus>;
   searchResults: BibleVerse[];
   isLoading: boolean;
   error: string | null;
@@ -16,6 +18,8 @@ interface BibleState {
   loadBooks: () => Promise<void>;
   selectBook: (bookId: number) => Promise<void>;
   loadChapter: (bookId: number, chapterNumber: number) => Promise<void>;
+  loadChapterProgress: (bookId: number) => Promise<void>;
+  resetBookProgress: (bookId: number) => Promise<void>;
   searchVerses: (query: string) => Promise<void>;
   setLanguage: (language: 'cn' | 'en') => void;
   clearError: () => void;
@@ -27,6 +31,7 @@ export const useBibleStore = create<BibleState>((set, get) => ({
   currentBook: null,
   currentChapter: null,
   chapters: [],
+  chapterProgress: {},
   searchResults: [],
   isLoading: false,
   error: null,
@@ -50,20 +55,40 @@ export const useBibleStore = create<BibleState>((set, get) => ({
     try {
       const [book, chapters] = await Promise.all([
         BibleAPI.getBook(bookId),
-        BibleAPI.getChaptersByBook(bookId)
+        BibleAPI.getChaptersByBook(bookId),
       ]);
-      set({ 
-        currentBook: book, 
+      set({
+        currentBook: book,
         chapters,
         currentChapter: null,
-        isLoading: false 
+        chapterProgress: {},
+        isLoading: false,
       });
+      void get().loadChapterProgress(bookId);
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : '加载书卷失败',
-        isLoading: false 
+        isLoading: false,
       });
     }
+  },
+
+  loadChapterProgress: async (bookId: number) => {
+    try {
+      const items = await ReadingAPI.getBookChapterProgress(bookId);
+      const chapterProgress: Record<number, ChapterReadStatus> = {};
+      for (const item of items) {
+        chapterProgress[item.chapterNumber] = item.status;
+      }
+      set({ chapterProgress });
+    } catch (error) {
+      console.error('Failed to load chapter progress:', error);
+    }
+  },
+
+  resetBookProgress: async (bookId: number) => {
+    await ReadingAPI.resetBookProgress(bookId);
+    await get().loadChapterProgress(bookId);
   },
 
   loadChapter: async (bookId: number, chapterNumber: number) => {
@@ -117,6 +142,7 @@ export const useBibleStore = create<BibleState>((set, get) => ({
       currentBook: null,
       currentChapter: null,
       chapters: [],
+      chapterProgress: {},
     });
   },
 }));

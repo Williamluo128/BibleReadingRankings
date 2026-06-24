@@ -21,7 +21,7 @@ interface ReadingState {
   // Actions
   markVerseAsRead: (verseId: string) => Promise<void>;
   markMultipleVersesAsRead: (verseIds: string[]) => Promise<void>;
-  loadReadStatus: (verseIds: string[]) => Promise<void>;
+  loadReadStatus: (verseIds: string[], bookId?: number) => Promise<void>;
   loadTodayReadings: () => Promise<void>;
   loadDailyStats: (days?: number) => Promise<void>;
   loadTotalStats: () => Promise<void>;
@@ -112,9 +112,9 @@ export const useReadingStore = create<ReadingState>((set, get) => ({
     }
   },
 
-  loadReadStatus: async (verseIds: string[]) => {
+  loadReadStatus: async (verseIds: string[], bookId?: number) => {
     try {
-      const readVerseIds = await ReadingAPI.getReadStatus(verseIds);
+      const readVerseIds = await ReadingAPI.getReadStatus(verseIds, bookId);
 
       set({
         readVerses: new Set(readVerseIds),

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useBibleStore } from '@/stores/bible.store';
+import { useReadingStore } from '@/stores/reading.store';
 import { BibleBookList } from '@/components/bible/BibleBookList';
 import { ChapterList } from '@/components/bible/ChapterList';
 import { BibleReader } from '@/components/bible/BibleReader';
@@ -11,15 +12,19 @@ import type { BibleBook, BibleVerse } from '@bible-rankings/shared';
 
 export const BiblePage: React.FC = () => {
   const [showSidebar, setShowSidebar] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const {
     currentBook,
     currentChapter,
     chapters,
+    chapterProgress,
     selectBook,
     loadChapter,
     resetSelection,
+    resetBookProgress,
     isLoading,
   } = useBibleStore();
+  const { loadReadStatus } = useReadingStore();
 
   const handleBookSelect = async (book: BibleBook) => {
     await selectBook(book.id);
@@ -38,6 +43,28 @@ export const BiblePage: React.FC = () => {
 
   const handleVerseRead = (verse: BibleVerse) => {
     console.log('Verse read:', verse);
+  };
+
+  const handleResetBook = async () => {
+    if (!currentBook) return;
+
+    const confirmed = window.confirm(
+      `确定要重置「${currentBook.nameCn}」的章节阅读标记吗？\n\n章节书签将恢复为未读，可重新阅读本书。您的累计阅读统计不会减少。`,
+    );
+    if (!confirmed) return;
+
+    setIsResetting(true);
+    try {
+      await resetBookProgress(currentBook.id);
+      if (currentChapter?.verses) {
+        await loadReadStatus(currentChapter.verses.map((v) => v.id), currentBook.id);
+      }
+    } catch (error) {
+      console.error('Failed to reset book progress:', error);
+      window.alert('重置失败，请稍后重试');
+    } finally {
+      setIsResetting(false);
+    }
   };
 
   return (
@@ -88,9 +115,12 @@ export const BiblePage: React.FC = () => {
 
                     <ChapterList
                       chapters={chapters}
+                      chapterProgress={chapterProgress}
                       onChapterSelect={handleChapterSelect}
                       selectedChapter={currentChapter?.chapterNumber}
                       isLoading={isLoading}
+                      onReset={handleResetBook}
+                      isResetting={isResetting}
                     />
                   </div>
                 )}

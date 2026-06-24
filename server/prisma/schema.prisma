@@ -25,6 +25,7 @@ model User {
   // Relations
   readingRecords    ReadingRecord[]
   dailyStats        DailyStats[]
+  bookReadingResets BookReadingReset[]
   sentRequests      Friendship[]    @relation("FriendshipRequester")
   receivedRequests  Friendship[]    @relation("FriendshipAddressee")
   ownedGroups       Group[]         @relation("GroupOwner")
@@ -45,6 +46,7 @@ model BibleBook {
 
   // Relations
   chapters     BibleChapter[]
+  readingResets BookReadingReset[]
 
   @@map("bible_books")
 }
@@ -106,6 +108,20 @@ model DailyStats {
   @@unique([userId, date])
   @@index([date, versesRead])
   @@map("daily_stats")
+}
+
+// 书卷阅读重置时间点：章节进度仅统计此时间之后的阅读记录，不影响全局累计统计
+model BookReadingReset {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  bookId    Int      @map("book_id")
+  resetAt   DateTime @default(now()) @map("reset_at")
+
+  user User      @relation(fields: [userId], references: [id])
+  book BibleBook @relation(fields: [bookId], references: [id])
+
+  @@unique([userId, bookId])
+  @@map("book_reading_resets")
 }
 
 model Friendship {
