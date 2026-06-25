@@ -15,7 +15,9 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx src/scripts/seed.ts",
-    "db:import-bible": "tsx src/scripts/import-bible.ts"
+    "db:import-bible": "tsx src/scripts/import-bible.ts",
+    "db:fix-zh-placeholders": "tsx src/scripts/fix-zh-placeholder-verses.ts",
+    "db:fix-zh-source": "node scripts/fix-zh-source-data.mjs"
   },
   "dependencies": {
     "@bible-rankings/shared": "*",

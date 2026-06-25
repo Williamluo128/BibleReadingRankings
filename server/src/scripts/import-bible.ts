@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import { isZhVersePlaceholder, ZH_MERGED_VERSE_NOTE } from '@bible-rankings/shared';
 import { prisma } from '@/config/database';
 
 interface BibleBookData {
@@ -180,12 +181,12 @@ export class BibleImporter {
       const zhText = zhVerses[verseIndex]?.trim();
       const enText = enVerses[verseIndex]?.trim();
 
-      if (!zhText || !enText) continue;
+      if (!enText) continue;
 
       data.push({
         chapterId,
         verseNumber: verseIndex + 1,
-        textCn: zhText,
+        textCn: !zhText || isZhVersePlaceholder(zhText) ? ZH_MERGED_VERSE_NOTE : zhText,
         textEn: enText,
       });
     }

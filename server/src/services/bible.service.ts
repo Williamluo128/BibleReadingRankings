@@ -1,5 +1,63 @@
 import { prisma } from '@/config/database';
-import type { BibleBook, BibleChapter, BibleVerse } from '@bible-rankings/shared';
+import {
+  normalizeZhVerseText,
+  ZH_MERGED_VERSE_NOTE,
+  type BibleBook,
+  type BibleChapter,
+  type BibleVerse,
+} from '@bible-rankings/shared';
+
+type VerseRow = {
+  id: string;
+  chapterId: string;
+  verseNumber: number;
+  textCn: string;
+  textEn: string;
+  chapter?: {
+    id: string;
+    bookId: number;
+    chapterNumber: number;
+    verseCount: number;
+    book: {
+      id: number;
+      nameCn: string;
+      nameEn: string;
+      abbreviation: string;
+      testament: string;
+      bookOrder: number;
+    } | null;
+  } | null;
+};
+
+function mapBook(book: NonNullable<VerseRow['chapter']>['book']) {
+  return {
+    id: book.id,
+    nameCn: book.nameCn,
+    nameEn: book.nameEn,
+    abbreviation: book.abbreviation,
+    testament: book.testament as 'OT' | 'NT',
+    bookOrder: book.bookOrder,
+  };
+}
+
+function mapVerse(verse: VerseRow): BibleVerse {
+  return {
+    id: verse.id,
+    chapterId: verse.chapterId,
+    verseNumber: verse.verseNumber,
+    textCn: normalizeZhVerseText(verse.textCn),
+    textEn: verse.textEn,
+    chapter: verse.chapter
+      ? {
+          id: verse.chapter.id,
+          bookId: verse.chapter.bookId,
+          chapterNumber: verse.chapter.chapterNumber,
+          verseCount: verse.chapter.verseCount,
+          book: verse.chapter.book ? mapBook(verse.chapter.book) : undefined,
+        }
+      : undefined,
+  };
+}
 
 export class BibleService {
   static async getAllBooks(): Promise<BibleBook[]> {
@@ -103,27 +161,7 @@ export class BibleService {
       },
     });
     
-    return verses.map(verse => ({
-      id: verse.id,
-      chapterId: verse.chapterId,
-      verseNumber: verse.verseNumber,
-      textCn: verse.textCn,
-      textEn: verse.textEn,
-      chapter: verse.chapter ? {
-        id: verse.chapter.id,
-        bookId: verse.chapter.bookId,
-        chapterNumber: verse.chapter.chapterNumber,
-        verseCount: verse.chapter.verseCount,
-        book: verse.chapter.book ? {
-          id: verse.chapter.book.id,
-          nameCn: verse.chapter.book.nameCn,
-          nameEn: verse.chapter.book.nameEn,
-          abbreviation: verse.chapter.book.abbreviation,
-          testament: verse.chapter.book.testament as 'OT' | 'NT',
-          bookOrder: verse.chapter.book.bookOrder,
-        } : undefined,
-      } : undefined,
-    }));
+    return verses.map(mapVerse);
   }
 
   static async getChapterWithVerses(bookId: number, chapterNumber: number) {
@@ -155,22 +193,22 @@ export class BibleService {
         testament: chapter.book.testament as 'OT' | 'NT',
         bookOrder: chapter.book.bookOrder,
       } : undefined,
-      verses: chapter.verses.map(verse => ({
-        id: verse.id,
-        chapterId: verse.chapterId,
-        verseNumber: verse.verseNumber,
-        textCn: verse.textCn,
-        textEn: verse.textEn,
-      })),
+      verses: chapter.verses.map((verse) => mapVerse(verse)),
     };
   }
 
   static async searchVerses(query: string, limit: number = 20): Promise<BibleVerse[]> {
     const verses = await prisma.bibleVerse.findMany({
       where: {
-        OR: [
-          { textCn: { contains: query, mode: 'insensitive' } },
-          { textEn: { contains: query, mode: 'insensitive' } },
+        AND: [
+          {
+            OR: [
+              { textCn: { contains: query, mode: 'insensitive' } },
+              { textEn: { contains: query, mode: 'insensitive' } },
+            ],
+          },
+          { NOT: { textCn: ZH_MERGED_VERSE_NOTE } },
+          { NOT: { textCn: 'a' } },
         ],
       },
       take: limit,
@@ -188,26 +226,6 @@ export class BibleService {
       ],
     });
     
-    return verses.map(verse => ({
-      id: verse.id,
-      chapterId: verse.chapterId,
-      verseNumber: verse.verseNumber,
-      textCn: verse.textCn,
-      textEn: verse.textEn,
-      chapter: verse.chapter ? {
-        id: verse.chapter.id,
-        bookId: verse.chapter.bookId,
-        chapterNumber: verse.chapter.chapterNumber,
-        verseCount: verse.chapter.verseCount,
-        book: verse.chapter.book ? {
-          id: verse.chapter.book.id,
-          nameCn: verse.chapter.book.nameCn,
-          nameEn: verse.chapter.book.nameEn,
-          abbreviation: verse.chapter.book.abbreviation,
-          testament: verse.chapter.book.testament as 'OT' | 'NT',
-          bookOrder: verse.chapter.book.bookOrder,
-        } : undefined,
-      } : undefined,
-    }));
+    return verses.map(mapVerse);
   }
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useBibleStore } from '@/stores/bible.store';
 import { useReadingStore } from '@/stores/reading.store';
-import type { BibleVerse } from '@bible-rankings/shared';
+import { getVerseDisplayText, isZhMergedVerseNote, type BibleVerse } from '@bible-rankings/shared';
 
 interface BibleReaderProps {
   onVerseRead?: (verse: BibleVerse) => void;
@@ -126,7 +126,8 @@ export const BibleReader: React.FC<BibleReaderProps> = ({ onVerseRead }) => {
         {currentChapter.verses?.map(verse => {
           const isSelected = selectedVerses.has(verse.id);
           const isRead = readVerses.has(verse.id);
-          const verseText = language === 'cn' ? verse.textCn : verse.textEn;
+          const verseText = getVerseDisplayText(verse.textCn, verse.textEn, language);
+          const isMergedVerseNote = language === 'cn' && isZhMergedVerseNote(verse.textCn);
 
           return (
             <div
@@ -148,8 +149,14 @@ export const BibleReader: React.FC<BibleReaderProps> = ({ onVerseRead }) => {
               {/* Verse Text */}
               <p className={`
                 bible-text text-lg md:text-xl leading-loose
-                ${isSelected ? 'text-gray-900' : isRead ? 'text-gray-600' : 'text-gray-800'}
-                ${isRead && !isSelected ? 'decoration-gray-200 underline decoration-1 underline-offset-4' : ''}
+                ${isMergedVerseNote
+                  ? 'text-gray-400 italic text-base md:text-lg'
+                  : isSelected
+                    ? 'text-gray-900'
+                    : isRead
+                      ? 'text-gray-600'
+                      : 'text-gray-800'}
+                ${isRead && !isSelected && !isMergedVerseNote ? 'decoration-gray-200 underline decoration-1 underline-offset-4' : ''}
               `}>
                 {verseText}
               </p>
